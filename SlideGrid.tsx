@@ -1,0 +1,360 @@
+import * as React from "react";
+import compact from "lodash/compact";
+
+let SLIDE_GRID_INSTANCE_ID = 0;
+
+interface ISlideGridProps {
+    className?: string;
+    canExchange(a: string, b?: string): boolean;
+    done(key: string): void;
+    tap(key: string): void;
+    smear(key: string): void;
+    exchange(a: string, b: string): void;
+}
+
+interface ISlideGridState {
+    active?: HTMLElement;
+    emptyLocation?: { left: number, top: number };
+    location?: ILocation;
+    wiggle?: boolean;
+}
+
+interface ILocation {
+    timestamp: number;
+    clientX: number;
+    clientY: number;
+    offsetX: number;
+    offsetY: number;
+}
+
+interface IInputEvent {
+    target: any;
+    clientX: number;
+    clientY: number;
+    touchCount?: number;
+}
+
+class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
+    private lastInputEvent: IInputEvent = {} as any;
+    private uniqueId: string;
+    private tickHandle: any;
+
+    constructor(props: ISlideGridProps) {
+        super(props);
+        this.state = {};
+        this.uniqueId = `slide-component-${++SLIDE_GRID_INSTANCE_ID}`;
+    }
+
+    public render() {
+        const children = this.children;
+        return <div id={this.uniqueId} className={`${this.props.className} ${this.state.wiggle ? "wiggle" : ""}`}
+            onMouseDown={this.onMouseDown}
+            onMouseMove={this.onMouseMove}
+            onMouseUp={this.onMouseUp}
+        // React's unified event system uses passive handlers which makes avoiding scroll-on-touch-drag impossible 
+        // onTouchStart={this.onTouchStart}
+        // onTouchMove={this.onTouchMove}
+        // onTouchEnd={this.onTouchEnd}
+        // onTouchCancel={this.onTouchEnd}
+        >
+            {children}
+        </div>;
+    }
+
+    public componentDidMount() {
+        // React's unified event system uses passive handlers which makes avoiding scroll-on-touch-drag impossible 
+        const myDomElement = this.myDomElement;
+        if (myDomElement) {
+            myDomElement.addEventListener("touchstart", this.onTouchStart as any, { passive: false });
+            myDomElement.addEventListener("touchmove", this.onTouchMove as any, { passive: false });
+            myDomElement.addEventListener("touchend", this.onTouchEnd as any, { passive: false });
+            myDomElement.addEventListener("touchcancel", this.onTouchEnd as any, { passive: false });
+        } else {
+            console.error("Couldn't find myself in the DOM: " + this.uniqueId);
+        }
+        this.tickHandle = setInterval(this.tick, 100);
+    }
+
+    public componentWillUnmount() {
+        const tickHandle = this.tickHandle;
+        if (tickHandle !== undefined) {
+            this.tickHandle = undefined;
+            clearInterval(this.tickHandle);
+        }
+    }
+
+    private get myDomElement()  {
+        return document.getElementById(this.uniqueId);
+    }
+
+    private get children(): any[] {
+        return (this.props.children || []) as any[];
+    }
+
+    private get childElements(): HTMLElement[] {
+        return compact(this.keys.map((e) => document.getElementById(e)));
+    }
+
+    private get keys(): string[] {
+        return this.children.map((child) => child.key);
+    }
+
+    private tick = () => {
+        const {active, location} = this.state;
+        if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
+            let isDragging = active.classList.contains("dragging");
+            if (!isDragging && this.props.canExchange(active.id)) {
+                this.setState({wiggle: true});
+            }
+        }
+    }
+
+    private getTarget = (event: IInputEvent): HTMLElement | undefined => {
+        let target: any = event.target;
+        while (target && !this.keys.includes(target.id)) {
+            target = target.parentElement;
+        }
+        const x = event.clientX;
+        const y = event.clientY;
+        if (target && this.state.active === target) {
+            const otherTarget = this.childElements.find((element) => {
+                if (element === target) {
+                    return false;
+                }
+                const rect = element.getBoundingClientRect();
+                const elementLeft = rect.left;
+                const elementTop = rect.top;
+                const elementRight = rect.right;
+                const elementBottom = rect.bottom;
+                return (
+                    x > elementLeft &&
+                    x < elementRight &&
+                    y > elementTop &&
+                    y < elementBottom);
+            });
+            if (otherTarget) {
+                return otherTarget;
+            }
+        }
+        return target;
+    }
+
+    public componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState) {
+        const target = this.state.active;
+        const location = this.state.location;
+        const emptyLocation = this.state.emptyLocation;
+        if (target && location && emptyLocation) {
+            // console.log({ oldRect: target.getBoundingClientRect() });
+            target.style.transform = null;
+            const rect = target.getBoundingClientRect();
+            console.log({ newRect: rect });
+            if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
+                || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
+                const newEmptyLocation = {
+                    left: rect.left,
+                    top: rect.top,
+                }
+                const newState = {
+                    emptyLocation: newEmptyLocation,
+                    location: {
+                        timestamp: location.timestamp,
+                        clientX: newEmptyLocation.left + location.offsetX,
+                        clientY: newEmptyLocation.top + location.offsetY,
+                        offsetX: location.offsetX,
+                        offsetY: location.offsetY,
+                    },
+                };
+                console.log({ oldState: this.state, newState });
+                this.setState(newState);
+            }
+        }
+    }
+
+    private onMouseDown = (event: React.MouseEvent<any, MouseEvent>) => {
+        this.onMouseOrTouchDown(event);
+    }
+
+    private onMouseOrTouchDown = (event: IInputEvent) => {
+        const target = this.getTarget(event);
+        if (target) {
+            // console.log(target);
+            const rect = target.getBoundingClientRect();
+            const emptyLocation = {
+                left: rect.left,
+                top: rect.top,
+            }
+            this.setState({
+                active: target,
+                emptyLocation,
+                location: {
+                    timestamp: Date.now(),
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    offsetX: event.clientX - rect.left,
+                    offsetY: event.clientY - rect.top,
+                },
+            });
+            setTimeout(() => {
+                if (this.state.active === target && !target.classList.contains("dragging") && this.props.canExchange(target.id)) {
+                    target.classList.add("pre-dragging");
+                }
+            }, 100);
+            //console.log({ mouseDown: target.id, event });
+        }
+    }
+
+    private onMouseMove = (event: React.MouseEvent<any, MouseEvent>) => {
+        this.onMouseOrTouchMove(event);
+    }
+
+    private onMouseOrTouchMove = (event: IInputEvent) => {
+        const target = this.getTarget(event);
+        const { active, emptyLocation, location: activeLocation } = this.state;
+        if (!active || !activeLocation) {
+            return;
+        }
+        const canDrag = event.touchCount === undefined || event.touchCount > 1 || this.state.wiggle;
+        if (canDrag) {
+            let isDragging = active.classList.contains("dragging");
+            let dx = event.clientX - activeLocation.clientX;
+            let dy = event.clientY - activeLocation.clientY;
+            const d2 = dx * dx + dy * dy;
+            if (!isDragging && d2 > 9) {
+                if (this.props.canExchange(active.id)) {
+                    active.classList.add("dragging");
+                    active.style.zIndex = "1";
+                    isDragging = true;
+                }
+            }
+            if (isDragging) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    dy = 0;
+                } else {
+                    dx = 0;
+                }
+                const bounds = active.parentElement!.getBoundingClientRect();
+                const activeBounds = active.getBoundingClientRect();
+                if (activeBounds.left + dx < bounds.left) {
+                    dx = bounds.left - activeBounds.left;
+                }
+                if (activeBounds.top + dy < bounds.top) {
+                    dy = bounds.top - activeBounds.top;
+                }
+                if (activeBounds.right + dx > bounds.right) {
+                    dx = bounds.right - activeBounds.right;
+                }
+                if (activeBounds.bottom + dy > bounds.bottom) {
+                    dy = bounds.bottom - activeBounds.bottom;
+                }
+                active.classList.remove("pre-dragging");
+                active.style.transform = `translate(${dx}px,${dy}px)`;
+                if (target) {
+                    const sliding = target.classList.contains("sliding");
+                    if (target !== active && !sliding && this.props.canExchange(target.id, active.id)) {
+                        const er = target.getBoundingClientRect();
+                        const emptyLeft = emptyLocation!.left;
+                        const emptyTop = emptyLocation!.top;
+                        const sdx = emptyLeft - er.left;
+                        const sdy = emptyTop - er.top;
+                        target.classList.add("sliding");
+                        target.style.transform = `translate(${sdx}px,${sdy}px)`;
+                        target.style.transition = `all 0.1s ease-in-out`;
+                        const a = active.id;
+                        const b = target.id;
+                        setTimeout(() => {
+                            target.classList.remove("sliding");
+                            target.style.transform = null;
+                            target.style.transition = "";
+                            this.props.exchange(a, b);
+                        }, 10);
+                    }
+                }
+            }
+        } else if (target) { // touching something
+            const targetX = (target.getBoundingClientRect().left + target.getBoundingClientRect().right) / 2;
+            const targetY = (target.getBoundingClientRect().top + target.getBoundingClientRect().bottom) / 2;
+            let dx = Math.abs(event.clientX - targetX);
+            let dy = Math.abs(event.clientY - targetY);
+            const d2 = dx * dx + dy * dy;
+            console.log({id: target.id, d2});
+            if (target === active ? d2 > 20 : d2 < 500) {
+                this.props.smear(target.id);
+            }
+        }
+    }
+
+    private onMouseUp = (event: React.MouseEvent<any, MouseEvent>) => {
+        this.onMouseOrTouchUp(event);
+    }
+
+    private onMouseOrTouchUp = (event: IInputEvent) => {
+        const target = this.getTarget(event);
+        const state = this.state;
+        console.log({ onMouseOrTouchUp: event, target, active: state.active });
+        let click: string;
+        let done: string;
+        if (state.active) {
+            done = state.active.id;
+            state.active.classList.remove("pre-dragging");
+            if (state.active.classList.contains("dragging")) {
+                state.active.classList.remove("dragging");
+            } else if (event.touchCount === undefined) {
+                click = state.active.id;
+            } else if (target === state.active && state.location) {
+                const dt = Date.now() - state.location.timestamp;
+                console.log({ dt });
+                if (dt < 300) {
+                    click = state.active.id;
+                }
+            }
+            state.active.style.transform = null;
+        }
+        this.setState({ active: undefined, location: undefined, wiggle: false }, () => {
+            if (click) {
+                this.props.tap(click);
+            } else {
+                this.props.done(done);
+            }
+        });
+    }
+
+    private onTouchStart = (event: TouchEvent) => {
+        event.preventDefault(); // prevents generation of mouse events 
+        // console.log({ onTouchStart: event });
+        this.recordTouch(event);
+        this.onMouseOrTouchDown(this.lastInputEvent)
+    }
+
+    //    private onTouchMove = (event: React.TouchEvent<any>) => {
+    private onTouchMove = (event: TouchEvent) => {
+        event.preventDefault(); // prevents generation of mouse events 
+        // event.persist();
+        // console.log({ onTouchMove: event });
+        this.recordTouch(event);
+        this.onMouseOrTouchMove(this.lastInputEvent)
+    }
+
+    private onTouchEnd = (event: TouchEvent) => {
+        event.preventDefault(); // prevents generation of mouse events 
+        // event.persist();
+        // console.log({ onTouchEnd: event });
+        this.recordTouch(event);
+        this.onMouseOrTouchUp(this.lastInputEvent);
+    }
+
+    private recordTouch = (event: TouchEvent) => {
+        const touchCount = event.touches.length;
+        let clientX = 0;
+        let clientY = 0;
+        for (let i = 0; i < touchCount; ++i) {
+            clientX += event.touches[i].clientX;
+            clientY += event.touches[i].clientY;
+        }
+        clientX /= touchCount;
+        clientY /= touchCount;
+        this.lastInputEvent = { target: event.target, clientX, clientY, touchCount };
+        console.log(this.lastInputEvent);
+    }
+}
+
+export default SlideGrid;
