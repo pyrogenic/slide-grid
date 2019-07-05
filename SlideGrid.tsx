@@ -4,11 +4,28 @@ import compact from "lodash/compact";
 let SLIDE_GRID_INSTANCE_ID = 0;
 
 interface ISlideGridProps {
+    /**
+     * CSS class name for the main element.
+     */
     className?: string;
+
+    /**
+     * @param a key of the tile a user is interacting with
+     * @param b key of the tile that might be exchanged with {a}
+     * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
+     */
     canExchange(a: string, b?: string): boolean;
+
+    /** the player has finished an interaction that did not result in a {tap} or {exchange} */
     done(key: string): void;
+
+    /** the player clicked or tapped on {key} */
     tap(key: string): void;
+
+    /** the player is dragging their finger across {key}, but not sliding anything */
     smear(key: string): void;
+
+    /** the player dragged {a} into {b}'s place, so their positions should be exchanged */
     exchange(a: string, b: string): void;
 }
 
@@ -34,6 +51,11 @@ interface IInputEvent {
     touchCount?: number;
 }
 
+/**
+ * Immediate children must have the same "key" and "id" attributes:
+ *  - key is used when dealing with the React side of things
+ *  - id is used when manipulating the DOM.
+ */
 class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private lastInputEvent: IInputEvent = {} as any;
     private uniqueId: string;
@@ -46,18 +68,11 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     }
 
     public render() {
-        const children = this.children;
         return <div id={this.uniqueId} className={`${this.props.className} ${this.state.wiggle ? "wiggle" : ""}`}
             onMouseDown={this.onMouseDown}
             onMouseMove={this.onMouseMove}
-            onMouseUp={this.onMouseUp}
-        // React's unified event system uses passive handlers which makes avoiding scroll-on-touch-drag impossible 
-        // onTouchStart={this.onTouchStart}
-        // onTouchMove={this.onTouchMove}
-        // onTouchEnd={this.onTouchEnd}
-        // onTouchCancel={this.onTouchEnd}
-        >
-            {children}
+            onMouseUp={this.onMouseUp}>
+            {this.children}
         </div>;
     }
 
