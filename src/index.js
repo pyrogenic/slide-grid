@@ -1,0 +1,1 @@
+export SlideGrid from './SlideGrid';
