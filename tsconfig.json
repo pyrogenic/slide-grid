@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "module": "es6",
+        "target": "es5",
+        "allowSyntheticDefaultImports": true,
+        "experimentalDecorators": true,
+        "noImplicitAny": true,
+        "jsx": "react",
+        "declaration": true,
+        "sourceMap": true,
+        "outDir": "./lib",
+        "moduleResolution": "node",
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext"
+        ],
+    },
+    "include": [
+        "./src/**/*"
+    ]
+}
