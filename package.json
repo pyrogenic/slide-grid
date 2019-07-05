@@ -18,8 +18,7 @@
     "trailingComma": "all"
   },
   "files": [
-    "lib",
-    "es"
+    "lib"
   ],
   "keywords": [
     "react",

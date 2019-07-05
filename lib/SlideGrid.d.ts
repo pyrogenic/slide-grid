@@ -9,13 +9,13 @@ interface ISlideGridProps {
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
      */
-    canExchange(a: string, b?: string): boolean;
+    canExchange?(a: string, b?: string): boolean;
     /** the player has finished an interaction that did not result in a {tap} or {exchange} */
-    done(key: string): void;
+    done?(key: string): void;
     /** the player clicked or tapped on {key} */
-    tap(key: string): void;
+    tap?(key: string): void;
     /** the player is dragging their finger across {key}, but not sliding anything */
-    smear(key: string): void;
+    smear?(key: string): void;
     /** the player dragged {a} into {b}'s place, so their positions should be exchanged */
     exchange(a: string, b: string): void;
 }
@@ -52,6 +52,11 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private readonly children;
     private readonly childElements;
     private readonly keys;
+    private canExchange;
+    private done;
+    private tap;
+    private smear;
+    private exchange;
     private tick;
     private getTarget;
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;

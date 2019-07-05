@@ -2,13 +2,15 @@
     "compilerOptions": {
         "module": "es6",
         "target": "es5",
+        "strict": true,
         "allowSyntheticDefaultImports": true,
         "experimentalDecorators": true,
         "noImplicitAny": true,
         "jsx": "react",
         "declaration": true,
         "sourceMap": true,
-        "outDir": "./lib",
+        "outDir": "lib",
+        "forceConsistentCasingInFileNames": true,
         "moduleResolution": "node",
         "lib": [
             "dom",
@@ -17,6 +19,6 @@
         ],
     },
     "include": [
-        "./src/**/*"
+        "src"
     ]
 }

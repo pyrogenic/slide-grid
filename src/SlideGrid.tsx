@@ -14,16 +14,16 @@ interface ISlideGridProps {
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
      */
-    canExchange(a: string, b?: string): boolean;
+    canExchange?(a: string, b?: string): boolean;
 
     /** the player has finished an interaction that did not result in a {tap} or {exchange} */
-    done(key: string): void;
+    done?(key: string): void;
 
     /** the player clicked or tapped on {key} */
-    tap(key: string): void;
+    tap?(key: string): void;
 
     /** the player is dragging their finger across {key}, but not sliding anything */
-    smear(key: string): void;
+    smear?(key: string): void;
 
     /** the player dragged {a} into {b}'s place, so their positions should be exchanged */
     exchange(a: string, b: string): void;
@@ -114,11 +114,49 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return this.children.map((child) => child.key);
     }
 
+    private canExchange = (a: string, b?: string): boolean => {
+        const {canExchange} = this.props;
+        if (canExchange === undefined) {
+            return true;
+        }
+        return canExchange(a, b);
+    };
+
+    private done = (key: string) => {
+        const {done} = this.props;
+        if (done === undefined) {
+            return;
+        }
+        return done(key);
+    };
+
+    private tap = (key: string) => {
+        const {tap} = this.props;
+        if (tap === undefined) {
+            return;
+        }
+        return tap(key);
+    };
+
+    private smear = (key: string) => {
+        const {smear} = this.props;
+        if (smear === undefined) {
+            return;
+        }
+        return smear(key);
+    };
+
+    private exchange = (a: string, b: string) => {
+        const {exchange} = this.props;
+        exchange(a, b);
+    };
+
     private tick = () => {
         const {active, location} = this.state;
+        const {canExchange} = this.props;
         if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
             let isDragging = active.classList.contains("dragging");
-            if (!isDragging && this.props.canExchange(active.id)) {
+            if (!isDragging && this.canExchange(active.id)) {
                 this.setState({wiggle: true});
             }
         }
@@ -210,7 +248,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 },
             });
             setTimeout(() => {
-                if (this.state.active === target && !target.classList.contains("dragging") && this.props.canExchange(target.id)) {
+                if (this.state.active === target && !target.classList.contains("dragging") && this.canExchange(target.id)) {
                     target.classList.add("pre-dragging");
                 }
             }, 100);
@@ -235,7 +273,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dy = event.clientY - activeLocation.clientY;
             const d2 = dx * dx + dy * dy;
             if (!isDragging && d2 > 9) {
-                if (this.props.canExchange(active.id)) {
+                if (this.canExchange(active.id)) {
                     active.classList.add("dragging");
                     active.style.zIndex = "1";
                     isDragging = true;
@@ -265,7 +303,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 active.style.transform = `translate(${dx}px,${dy}px)`;
                 if (target) {
                     const sliding = target.classList.contains("sliding");
-                    if (target !== active && !sliding && this.props.canExchange(target.id, active.id)) {
+                    if (target !== active && !sliding && this.canExchange(target.id, active.id)) {
                         const er = target.getBoundingClientRect();
                         const emptyLeft = emptyLocation!.left;
                         const emptyTop = emptyLocation!.top;
@@ -280,7 +318,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                             target.classList.remove("sliding");
                             target.style.transform = null;
                             target.style.transition = "";
-                            this.props.exchange(a, b);
+                            this.exchange(a, b);
                         }, 10);
                     }
                 }
@@ -293,7 +331,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             const d2 = dx * dx + dy * dy;
             console.log({id: target.id, d2});
             if (target === active ? d2 > 20 : d2 < 500) {
-                this.props.smear(target.id);
+                this.smear(target.id);
             }
         }
     }
@@ -326,9 +364,9 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         this.setState({ active: undefined, location: undefined, wiggle: false }, () => {
             if (click) {
-                this.props.tap(click);
+                this.tap(click);
             } else {
-                this.props.done(done);
+                this.done(done);
             }
         });
     }
