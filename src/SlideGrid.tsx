@@ -1,5 +1,6 @@
 import * as React from "react";
 import compact from "lodash/compact";
+import "./SlideGrid.css";
 
 let SLIDE_GRID_INSTANCE_ID = 0;
 
@@ -64,11 +65,11 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     constructor(props: ISlideGridProps) {
         super(props);
         this.state = {};
-        this.uniqueId = `slide-component-${++SLIDE_GRID_INSTANCE_ID}`;
+        this.uniqueId = `slide-grid-${++SLIDE_GRID_INSTANCE_ID}`;
     }
 
     public render() {
-        return <div id={this.uniqueId} className={`${this.props.className} ${this.state.wiggle ? "wiggle" : ""}`}
+        return <div id={this.uniqueId} className={compact(["slide-grid", this.props.className, this.state.wiggle && "wiggle"]).join(" ")}
             onMouseDown={this.onMouseDown}
             onMouseMove={this.onMouseMove}
             onMouseUp={this.onMouseUp}>

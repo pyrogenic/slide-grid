@@ -1,4 +1,5 @@
 import * as React from "react";
+import "./SlideGrid.css";
 interface ISlideGridProps {
     /**
      * CSS class name for the main element.
