@@ -28,7 +28,7 @@ export interface ISlideGridTuning {
     motionOnRails: boolean;
 }
 
-const DEFAULT_TUNING: ISlideGridTuning = {
+export const DEFAULT_TUNING: ISlideGridTuning = {
     dragStartDistanceSquared: 9,
     slideDurationMS: 100,
     smearDistanceSquaredMin: 20,

@@ -8,6 +8,7 @@ export interface ISlideGridTuning {
     touchTapDurationMaxMS: number;
     motionOnRails: boolean;
 }
+export declare const DEFAULT_TUNING: ISlideGridTuning;
 interface ISlideGridProps {
     /**
      * CSS class name for the main element.
