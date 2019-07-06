@@ -86,7 +86,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             myDomElement.addEventListener("touchend", this.onTouchEnd as any, { passive: false });
             myDomElement.addEventListener("touchcancel", this.onTouchEnd as any, { passive: false });
         } else {
-            console.error("Couldn't find myself in the DOM: " + this.uniqueId);
+            console.warn(`Couldn't find myself in the DOM, touch support unavailable. (id: ${this.uniqueId})`);
         }
         this.tickHandle = setInterval(this.tick, 100);
     }
@@ -154,7 +154,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     private tick = () => {
         const {active, location} = this.state;
-        const {canExchange} = this.props;
         if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
             let isDragging = active.classList.contains("dragging");
             if (!isDragging && this.canExchange(active.id)) {
@@ -198,10 +197,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const location = this.state.location;
         const emptyLocation = this.state.emptyLocation;
         if (target && location && emptyLocation) {
-            // console.log({ oldRect: target.getBoundingClientRect() });
             target.style.transform = null;
             const rect = target.getBoundingClientRect();
-            console.log({ newRect: rect });
             if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
                 || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
                 const newEmptyLocation = {
@@ -218,7 +215,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         offsetY: location.offsetY,
                     },
                 };
-                console.log({ oldState: this.state, newState });
                 this.setState(newState);
             }
         }
@@ -231,7 +227,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private onMouseOrTouchDown = (event: IInputEvent) => {
         const target = this.getTarget(event);
         if (target) {
-            // console.log(target);
             const rect = target.getBoundingClientRect();
             const emptyLocation = {
                 left: rect.left,
@@ -253,7 +248,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     target.classList.add("pre-dragging");
                 }
             }, 100);
-            //console.log({ mouseDown: target.id, event });
         }
     }
 
@@ -330,7 +324,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dx = Math.abs(event.clientX - targetX);
             let dy = Math.abs(event.clientY - targetY);
             const d2 = dx * dx + dy * dy;
-            console.log({id: target.id, d2});
             if (target === active ? d2 > 20 : d2 < 500) {
                 this.smear(target.id);
             }
@@ -344,7 +337,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private onMouseOrTouchUp = (event: IInputEvent) => {
         const target = this.getTarget(event);
         const state = this.state;
-        console.log({ onMouseOrTouchUp: event, target, active: state.active });
         let click: string;
         let done: string;
         if (state.active) {
@@ -356,7 +348,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 click = state.active.id;
             } else if (target === state.active && state.location) {
                 const dt = Date.now() - state.location.timestamp;
-                console.log({ dt });
                 if (dt < 300) {
                     click = state.active.id;
                 }
@@ -374,24 +365,18 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     private onTouchStart = (event: TouchEvent) => {
         event.preventDefault(); // prevents generation of mouse events 
-        // console.log({ onTouchStart: event });
         this.recordTouch(event);
         this.onMouseOrTouchDown(this.lastInputEvent)
     }
 
-    //    private onTouchMove = (event: React.TouchEvent<any>) => {
     private onTouchMove = (event: TouchEvent) => {
         event.preventDefault(); // prevents generation of mouse events 
-        // event.persist();
-        // console.log({ onTouchMove: event });
         this.recordTouch(event);
         this.onMouseOrTouchMove(this.lastInputEvent)
     }
 
     private onTouchEnd = (event: TouchEvent) => {
         event.preventDefault(); // prevents generation of mouse events 
-        // event.persist();
-        // console.log({ onTouchEnd: event });
         this.recordTouch(event);
         this.onMouseOrTouchUp(this.lastInputEvent);
     }
@@ -407,7 +392,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         clientX /= touchCount;
         clientY /= touchCount;
         this.lastInputEvent = { target: event.target, clientX, clientY, touchCount };
-        console.log(this.lastInputEvent);
     }
 }
 
