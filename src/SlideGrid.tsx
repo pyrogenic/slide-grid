@@ -19,12 +19,13 @@ const DRAGGING = "dragging";
 /** CSS classname added to a child while it is animating to where it should be after an exchange but before {exchange} is actually called */
 const SLIDING = "sliding";
 
-interface ISlideGridTuning {
+export interface ISlideGridTuning {
     dragStartDistanceSquared: number;
     slideDurationMS: number;
     smearDistanceSquaredMin: number;
     smearDistanceSquaredMax: number;
     touchTapDurationMaxMS: number;
+    motionOnRails: boolean;
 }
 
 const DEFAULT_TUNING: ISlideGridTuning = {
@@ -33,6 +34,7 @@ const DEFAULT_TUNING: ISlideGridTuning = {
     smearDistanceSquaredMin: 20,
     smearDistanceSquaredMax: 500,
     touchTapDurationMaxMS: 300,
+    motionOnRails: true,
 }
 
 interface ISlideGridProps {
@@ -325,10 +327,12 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 }
             }
             if (isDragging) {
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    dy = 0;
-                } else {
-                    dx = 0;
+                if (this.tuning.motionOnRails) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        dy = 0;
+                    } else {
+                        dx = 0;
+                    }
                 }
                 const bounds = active.parentElement!.getBoundingClientRect();
                 const activeBounds = active.getBoundingClientRect();
