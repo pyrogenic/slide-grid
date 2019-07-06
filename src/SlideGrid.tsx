@@ -10,14 +10,38 @@ const SLIDE_GRID = "slide-grid";
 /** CSS classname added to the slide-grid container when a long-press is detected on a child */
 const WIGGLE = "wiggle";
 
+/** CSS classname added to an object under a mouse- or touch-down that's lasted at least 100ms that isn't yet being dragged */
+const PRE_DRAGGING = "pre-dragging";
+
 /** CSS classname of the object being dragged under the cursor */
 const DRAGGING = "dragging";
+
+/** CSS classname added to a child while it is animating to where it should be after an exchange but before {exchange} is actually called */
+const SLIDING = "sliding";
+
+interface ISlideGridTuning {
+    dragStartDistanceSquared: number;
+    slideDurationMS: number;
+    smearDistanceSquaredMin: number;
+    smearDistanceSquaredMax: number;
+    touchTapDurationMaxMS: number;
+}
+
+const DEFAULT_TUNING: ISlideGridTuning = {
+    dragStartDistanceSquared: 9,
+    slideDurationMS: 100,
+    smearDistanceSquaredMin: 20,
+    smearDistanceSquaredMax: 500,
+    touchTapDurationMaxMS: 300,
+}
 
 interface ISlideGridProps {
     /**
      * CSS class name for the main element.
      */
     className?: string;
+
+    tuning?: ISlideGridTuning;
 
     /**
      * @param a key of the tile a user is interacting with
@@ -125,6 +149,10 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     /** the list of DOM elements which are the visual manifestations of our React {children}. */
     private get childElements(): HTMLElement[] {
         return compact(this.keys.map((e) => document.getElementById(e)));
+    }
+
+    private get tuning(): ISlideGridTuning {
+        return this.props.tuning || DEFAULT_TUNING;
     }
 
     /** thunk — default behavior: any pair may be picked up or exchanged */
@@ -267,7 +295,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             });
             setTimeout(() => {
                 if (this.state.active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id)) {
-                    target.classList.add("pre-dragging");
+                    target.classList.add(PRE_DRAGGING);
                 }
             }, 100);
         }
@@ -289,7 +317,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dx = event.clientX - activeLocation.clientX;
             let dy = event.clientY - activeLocation.clientY;
             const d2 = dx * dx + dy * dy;
-            if (!isDragging && d2 > 9) {
+            if (!isDragging && d2 > this.tuning.dragStartDistanceSquared) {
                 if (this.canExchange(active.id)) {
                     active.classList.add(DRAGGING);
                     active.style.zIndex = "1";
@@ -316,27 +344,27 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 if (activeBounds.bottom + dy > bounds.bottom) {
                     dy = bounds.bottom - activeBounds.bottom;
                 }
-                active.classList.remove("pre-dragging");
+                active.classList.remove(PRE_DRAGGING);
                 active.style.transform = `translate(${dx}px,${dy}px)`;
                 if (target) {
-                    const sliding = target.classList.contains("sliding");
+                    const sliding = target.classList.contains(SLIDING);
                     if (target !== active && !sliding && this.canExchange(target.id, active.id)) {
                         const er = target.getBoundingClientRect();
                         const emptyLeft = emptyLocation!.left;
                         const emptyTop = emptyLocation!.top;
                         const sdx = emptyLeft - er.left;
                         const sdy = emptyTop - er.top;
-                        target.classList.add("sliding");
+                        target.classList.add(SLIDING);
                         target.style.transform = `translate(${sdx}px,${sdy}px)`;
-                        target.style.transition = `all 0.1s ease-in-out`;
+                        target.style.transition = `all ${this.tuning.slideDurationMS}ms ease-in-out`;
                         const a = active.id;
                         const b = target.id;
                         setTimeout(() => {
-                            target.classList.remove("sliding");
+                            target.classList.remove(SLIDING);
                             target.style.transform = null;
                             target.style.transition = "";
                             this.exchange(a, b);
-                        }, 10);
+                        }, this.tuning.slideDurationMS);
                     }
                 }
             }
@@ -346,7 +374,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dx = Math.abs(event.clientX - targetX);
             let dy = Math.abs(event.clientY - targetY);
             const d2 = dx * dx + dy * dy;
-            if (target === active ? d2 > 20 : d2 < 500) {
+            if (target === active ? d2 > this.tuning.smearDistanceSquaredMin : d2 < this.tuning.smearDistanceSquaredMax) {
                 this.smear(target.id);
             }
         }
@@ -363,14 +391,14 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         let done: string;
         if (state.active) {
             done = state.active.id;
-            state.active.classList.remove("pre-dragging");
+            state.active.classList.remove(PRE_DRAGGING);
             if (state.active.classList.contains(DRAGGING)) {
                 state.active.classList.remove(DRAGGING);
             } else if (event.touchCount === undefined) {
                 click = state.active.id;
             } else if (target === state.active && state.location) {
                 const dt = Date.now() - state.location.timestamp;
-                if (dt < 300) {
+                if (dt < this.tuning.touchTapDurationMaxMS) {
                     click = state.active.id;
                 }
             }

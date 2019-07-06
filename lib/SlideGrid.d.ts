@@ -1,10 +1,18 @@
 import * as React from "react";
 import "./SlideGrid.css";
+interface ISlideGridTuning {
+    dragStartDistanceSquared: number;
+    slideDurationMS: number;
+    smearDistanceSquaredMin: number;
+    smearDistanceSquaredMax: number;
+    touchTapDurationMaxMS: number;
+}
 interface ISlideGridProps {
     /**
      * CSS class name for the main element.
      */
     className?: string;
+    tuning?: ISlideGridTuning;
     /**
      * @param a key of the tile a user is interacting with
      * @param b key of the tile that might be exchanged with {a}
@@ -50,15 +58,26 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     componentDidMount(): void;
     componentWillUnmount(): void;
     private readonly myDomElement;
+    /** the list of our React children. */
     private readonly children;
-    private readonly childElements;
+    /** the list of the React keys of our {children}. */
     private readonly keys;
+    /** the list of DOM elements which are the visual manifestations of our React {children}. */
+    private readonly childElements;
+    private readonly tuning;
+    /** thunk — default behavior: any pair may be picked up or exchanged */
     private canExchange;
+    /** thunk — default behavior: no-op */
     private done;
+    /** thunk — default behavior: no-op */
     private tap;
+    /** thunk — default behavior: no-op */
     private smear;
+    /** thunk */
     private exchange;
+    /** detects long-presses: a long touch where the touch doesn't move enough to start a drag. */
     private tick;
+    /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget;
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;
     private onMouseDown;
