@@ -1,11 +1,12 @@
 import * as React from "react";
 import "./SlideGrid.css";
-interface ISlideGridTuning {
+export interface ISlideGridTuning {
     dragStartDistanceSquared: number;
     slideDurationMS: number;
     smearDistanceSquaredMin: number;
     smearDistanceSquaredMax: number;
     touchTapDurationMaxMS: number;
+    motionOnRails: boolean;
 }
 interface ISlideGridProps {
     /**
