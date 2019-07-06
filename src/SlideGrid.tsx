@@ -4,6 +4,15 @@ import "./SlideGrid.css";
 
 let SLIDE_GRID_INSTANCE_ID = 0;
 
+/** CSS classname of the slide-grid container */
+const SLIDE_GRID = "slide-grid";
+
+/** CSS classname added to the slide-grid container when a long-press is detected on a child */
+const WIGGLE = "wiggle";
+
+/** CSS classname of the object being dragged under the cursor */
+const DRAGGING = "dragging";
+
 interface ISlideGridProps {
     /**
      * CSS class name for the main element.
@@ -69,7 +78,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     }
 
     public render() {
-        return <div id={this.uniqueId} className={compact(["slide-grid", this.props.className, this.state.wiggle && "wiggle"]).join(" ")}
+        return <div id={this.uniqueId} className={compact([SLIDE_GRID, this.props.className, this.state.wiggle && WIGGLE]).join(" ")}
             onMouseDown={this.onMouseDown}
             onMouseMove={this.onMouseMove}
             onMouseUp={this.onMouseUp}>
@@ -103,18 +112,22 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return document.getElementById(this.uniqueId);
     }
 
+    /** the list of our React children. */
     private get children(): any[] {
         return (this.props.children || []) as any[];
     }
 
-    private get childElements(): HTMLElement[] {
-        return compact(this.keys.map((e) => document.getElementById(e)));
-    }
-
+    /** the list of the React keys of our {children}. */
     private get keys(): string[] {
         return this.children.map((child) => child.key);
     }
 
+    /** the list of DOM elements which are the visual manifestations of our React {children}. */
+    private get childElements(): HTMLElement[] {
+        return compact(this.keys.map((e) => document.getElementById(e)));
+    }
+
+    /** thunk — default behavior: any pair may be picked up or exchanged */
     private canExchange = (a: string, b?: string): boolean => {
         const {canExchange} = this.props;
         if (canExchange === undefined) {
@@ -123,6 +136,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return canExchange(a, b);
     };
 
+    /** thunk — default behavior: no-op */
     private done = (key: string) => {
         const {done} = this.props;
         if (done === undefined) {
@@ -131,6 +145,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return done(key);
     };
 
+    /** thunk — default behavior: no-op */
     private tap = (key: string) => {
         const {tap} = this.props;
         if (tap === undefined) {
@@ -139,6 +154,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return tap(key);
     };
 
+    /** thunk — default behavior: no-op */
     private smear = (key: string) => {
         const {smear} = this.props;
         if (smear === undefined) {
@@ -147,23 +163,27 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return smear(key);
     };
 
+    /** thunk */
     private exchange = (a: string, b: string) => {
         const {exchange} = this.props;
         exchange(a, b);
     };
 
+    /** detects long-presses: a long touch where the touch doesn't move enough to start a drag. */
     private tick = () => {
         const {active, location} = this.state;
         if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
-            let isDragging = active.classList.contains("dragging");
+            let isDragging = active.classList.contains(DRAGGING);
             if (!isDragging && this.canExchange(active.id)) {
                 this.setState({wiggle: true});
             }
         }
     }
 
+    /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget = (event: IInputEvent): HTMLElement | undefined => {
         let target: any = event.target;
+        // bubble-up until we find a direct child
         while (target && !this.keys.includes(target.id)) {
             target = target.parentElement;
         }
@@ -196,6 +216,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const target = this.state.active;
         const location = this.state.location;
         const emptyLocation = this.state.emptyLocation;
+        // After an exchange, make sure we know the new location of the dragged child,
+        // then update its transform so it appears that it hasn't moved from under the cursor.
         if (target && location && emptyLocation) {
             target.style.transform = null;
             const rect = target.getBoundingClientRect();
@@ -244,7 +266,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 },
             });
             setTimeout(() => {
-                if (this.state.active === target && !target.classList.contains("dragging") && this.canExchange(target.id)) {
+                if (this.state.active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id)) {
                     target.classList.add("pre-dragging");
                 }
             }, 100);
@@ -263,13 +285,13 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const canDrag = event.touchCount === undefined || event.touchCount > 1 || this.state.wiggle;
         if (canDrag) {
-            let isDragging = active.classList.contains("dragging");
+            let isDragging = active.classList.contains(DRAGGING);
             let dx = event.clientX - activeLocation.clientX;
             let dy = event.clientY - activeLocation.clientY;
             const d2 = dx * dx + dy * dy;
             if (!isDragging && d2 > 9) {
                 if (this.canExchange(active.id)) {
-                    active.classList.add("dragging");
+                    active.classList.add(DRAGGING);
                     active.style.zIndex = "1";
                     isDragging = true;
                 }
@@ -342,8 +364,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         if (state.active) {
             done = state.active.id;
             state.active.classList.remove("pre-dragging");
-            if (state.active.classList.contains("dragging")) {
-                state.active.classList.remove("dragging");
+            if (state.active.classList.contains(DRAGGING)) {
+                state.active.classList.remove(DRAGGING);
             } else if (event.touchCount === undefined) {
                 click = state.active.id;
             } else if (target === state.active && state.location) {
