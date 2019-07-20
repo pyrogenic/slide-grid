@@ -2,3 +2,7 @@
     user-select: none;
     touch-action: none;  
 }
+
+.dragging {
+    z-index: 1;
+}

@@ -322,7 +322,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             if (!isDragging && d2 > this.tuning.dragStartDistanceSquared) {
                 if (this.canExchange(active.id)) {
                     active.classList.add(DRAGGING);
-                    active.style.zIndex = "1";
                     isDragging = true;
                 }
             }
