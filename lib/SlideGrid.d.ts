@@ -83,10 +83,10 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private getTarget;
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;
     private onMouseDown;
-    private onMouseOrTouchDown;
     private onMouseMove;
-    private onMouseOrTouchMove;
     private onMouseUp;
+    private onMouseOrTouchDown;
+    private onMouseOrTouchMove;
     private onMouseOrTouchUp;
     private onTouchStart;
     private onTouchMove;
