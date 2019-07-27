@@ -3,6 +3,10 @@
     touch-action: none;  
 }
 
+.slide-grid > * {
+    position: relative;
+}
+
 .dragging {
     z-index: 1;
 }

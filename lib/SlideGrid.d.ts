@@ -7,6 +7,8 @@ export interface ISlideGridTuning {
     smearDistanceSquaredMax: number;
     touchTapDurationMaxMS: number;
     motionOnRails: boolean;
+    keepDragInBounds: boolean;
+    ignoreDragOutOfBounds: boolean;
 }
 export declare const DEFAULT_TUNING: ISlideGridTuning;
 interface ISlideGridProps {
@@ -55,6 +57,7 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private lastInputEvent;
     private uniqueId;
     private tickHandle;
+    private graph;
     constructor(props: ISlideGridProps);
     render(): JSX.Element;
     componentDidMount(): void;
@@ -82,6 +85,7 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget;
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;
+    private buildGraph;
     private onMouseDown;
     private onMouseMove;
     private onMouseUp;
