@@ -1,6 +1,7 @@
 import * as React from "react";
 import compact from "lodash/compact";
 import "./SlideGrid.css";
+import Graph from "node-dijkstra";
 
 let SLIDE_GRID_INSTANCE_ID = 0;
 
@@ -26,6 +27,8 @@ export interface ISlideGridTuning {
     smearDistanceSquaredMax: number;
     touchTapDurationMaxMS: number;
     motionOnRails: boolean;
+    keepDragInBounds: boolean;
+    ignoreDragOutOfBounds: boolean;
 }
 
 export const DEFAULT_TUNING: ISlideGridTuning = {
@@ -34,7 +37,9 @@ export const DEFAULT_TUNING: ISlideGridTuning = {
     smearDistanceSquaredMin: 20,
     smearDistanceSquaredMax: 500,
     touchTapDurationMaxMS: 300,
-    motionOnRails: true,
+    motionOnRails: false,
+    keepDragInBounds: false,
+    ignoreDragOutOfBounds: false,
 }
 
 interface ISlideGridProps {
@@ -99,6 +104,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private lastInputEvent: IInputEvent = {} as any;
     private uniqueId: string;
     private tickHandle: any;
+    private graph!: Graph;
 
     constructor(props: ISlideGridProps) {
         super(props);
@@ -127,6 +133,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             console.warn(`Couldn't find myself in the DOM, touch support unavailable. (id: ${this.uniqueId})`);
         }
         this.tickHandle = setInterval(this.tick, 100);
+        this.buildGraph();
     }
 
     public componentWillUnmount() {
@@ -271,11 +278,30 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     },
                 };
                 this.setState(newState);
+                return;
             }
         }
+        this.buildGraph();
         if (this.lastInputEvent.kind === "move") {
             this.onMouseOrTouchMove(this.lastInputEvent, true);
         }
+    }
+
+    private buildGraph = () => {
+        const graph = new Graph();
+        this.keys.forEach((a, aIndex, keys) => {
+            const neighbors: {[key: string]: number} = {};
+            keys.forEach((b) => {
+                if (a === b) {
+                    return;
+                }
+                if (this.canExchange(a, b)) {
+                    neighbors[b] = 1;
+                }
+            });
+            graph.addNode(a, neighbors);
+        });
+        this.graph = graph;
     }
 
     private onMouseDown = (event: React.MouseEvent<any, MouseEvent>) => {
@@ -326,11 +352,21 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         if (!active || !activeLocation) {
             return;
         }
-        const canDrag = event.touchCount === undefined || event.touchCount > 1 || this.state.wiggle;
+        let canDrag = event.touchCount === undefined || event.touchCount > 1 || this.state.wiggle;
+        let dx = event.clientX - activeLocation.clientX;
+        let dy = event.clientY - activeLocation.clientY;
+        if (canDrag && this.tuning.ignoreDragOutOfBounds) {
+            const bounds = active.parentElement!.getBoundingClientRect();
+            const activeBounds = active.getBoundingClientRect();
+            if (activeBounds.left + dx < bounds.left ||
+                activeBounds.top + dy < bounds.top ||
+                activeBounds.right + dx > bounds.right ||
+                activeBounds.bottom + dy > bounds.bottom) {
+                return;
+            }
+        }
         if (canDrag) {
             let isDragging = active.classList.contains(DRAGGING);
-            let dx = event.clientX - activeLocation.clientX;
-            let dy = event.clientY - activeLocation.clientY;
             const d2 = dx * dx + dy * dy;
             if (!isDragging && d2 > this.tuning.dragStartDistanceSquared) {
                 if (this.canExchange(active.id)) {
@@ -346,41 +382,60 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         dx = 0;
                     }
                 }
-                const bounds = active.parentElement!.getBoundingClientRect();
-                const activeBounds = active.getBoundingClientRect();
-                if (activeBounds.left + dx < bounds.left) {
-                    dx = bounds.left - activeBounds.left;
-                }
-                if (activeBounds.top + dy < bounds.top) {
-                    dy = bounds.top - activeBounds.top;
-                }
-                if (activeBounds.right + dx > bounds.right) {
-                    dx = bounds.right - activeBounds.right;
-                }
-                if (activeBounds.bottom + dy > bounds.bottom) {
-                    dy = bounds.bottom - activeBounds.bottom;
+                if (this.tuning.keepDragInBounds) {
+                    const bounds = active.parentElement!.getBoundingClientRect();
+                    const activeBounds = active.getBoundingClientRect();
+                    if (activeBounds.left + dx < bounds.left) {
+                        dx = bounds.left - activeBounds.left;
+                    }
+                    if (activeBounds.top + dy < bounds.top) {
+                        dy = bounds.top - activeBounds.top;
+                    }
+                    if (activeBounds.right + dx > bounds.right) {
+                        dx = bounds.right - activeBounds.right;
+                    }
+                    if (activeBounds.bottom + dy > bounds.bottom) {
+                        dy = bounds.bottom - activeBounds.bottom;
+                    }
                 }
                 active.classList.remove(PRE_DRAGGING);
                 active.style.transform = `translate(${dx}px,${dy}px)`;
                 if (target) {
-                    const sliding = target.classList.contains(SLIDING);
-                    if (target !== active && !sliding && this.canExchange(target.id, active.id)) {
-                        const er = target.getBoundingClientRect();
+                    if (target === active) {
+                        return;
+                    }
+                    const path: string[] | undefined = this.graph.path(active.id, target.id);
+                    if (!path) {
+                        return;
+                    }
+                    // pop active node off the path
+                    path.shift();
+                    if (path.find((bKey) => {
+                        const b = document.getElementById(bKey)!;
+                        return b.classList.contains(SLIDING);
+                    })) {
+                        return;
+                    }
+                    console.log(path.join());
+                    const exchangeTarget = document.getElementById(path.shift()!);
+                    // const sliding = exchangeTarget && exchangeTarget.classList.contains(SLIDING);
+                    if (exchangeTarget) {
+                        const er = exchangeTarget.getBoundingClientRect();
                         const emptyLeft = emptyLocation!.left;
                         const emptyTop = emptyLocation!.top;
                         const sdx = emptyLeft - er.left;
                         const sdy = emptyTop - er.top;
-                        target.classList.add(SLIDING);
-                        target.style.transform = `translate(${sdx}px,${sdy}px)`;
-                        target.style.transition = `all ${this.tuning.slideDurationMS}ms ease-in-out`;
+                        exchangeTarget.classList.add(SLIDING);
+                        exchangeTarget.style.transform = `translate(${sdx}px,${sdy}px)`;
+                        exchangeTarget.style.transition = `all ${this.tuning.slideDurationMS}ms ease-in-out`;
                         const a = active.id;
-                        const b = target.id;
-                        target.addEventListener("transitionend", () => {
-                            target.classList.remove(SLIDING);
-                            target.style.transform = null;
-                            target.style.transition = "";
+                        const b = exchangeTarget.id;
+                        setTimeout(() => {
+                            exchangeTarget.classList.remove(SLIDING);
+                            exchangeTarget.style.transform = null;
+                            exchangeTarget.style.transition = "";
                             this.exchange(a, b);
-                        }, {once: true, passive: true})
+                        }, this.tuning.slideDurationMS);
                     }
                 }
             }
@@ -448,7 +503,9 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         clientX /= touchCount;
         clientY /= touchCount;
-        return this.lastInputEvent = { kind, target: event.target, clientX, clientY, touchCount };
+        this.lastInputEvent = { kind, target: event.target, clientX, clientY, touchCount }
+        console.log(this.lastInputEvent);
+        return this.lastInputEvent;
     }
 }
 
