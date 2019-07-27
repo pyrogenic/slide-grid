@@ -70,9 +70,14 @@ interface ISlideGridProps {
     exchange(a: string, b: string): void;
 }
 
+type EmptyLocation = {
+    left: number;
+    top: number;
+};
+
 interface ISlideGridState {
     active?: HTMLElement;
-    emptyLocation?: { left: number, top: number };
+    emptyLocation?: EmptyLocation;
     location?: ILocation;
     wiggle?: boolean;
 }
@@ -282,6 +287,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             }
         }
         this.buildGraph();
+        console.log(this.lastInputEvent);
         if (this.lastInputEvent.kind === "move") {
             this.onMouseOrTouchMove(this.lastInputEvent, true);
         }
@@ -417,14 +423,15 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         return;
                     }
                     console.log(path.join());
-                    const exchangeTarget = document.getElementById(path.shift()!);
-                    // const sliding = exchangeTarget && exchangeTarget.classList.contains(SLIDING);
-                    if (exchangeTarget) {
+                    let newLocation = emptyLocation!
+                    while (path.length > 0) {
+                        const exchangeTarget = document.getElementById(path.shift()!)!;
                         const er = exchangeTarget.getBoundingClientRect();
-                        const emptyLeft = emptyLocation!.left;
-                        const emptyTop = emptyLocation!.top;
+                        const emptyLeft = newLocation.left;
+                        const emptyTop = newLocation.top;
                         const sdx = emptyLeft - er.left;
                         const sdy = emptyTop - er.top;
+                        newLocation = er;
                         exchangeTarget.classList.add(SLIDING);
                         exchangeTarget.style.transform = `translate(${sdx}px,${sdy}px)`;
                         exchangeTarget.style.transition = `all ${this.tuning.slideDurationMS}ms ease-in-out`;
