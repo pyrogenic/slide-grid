@@ -32,12 +32,13 @@ interface ISlideGridProps {
     /** the player dragged {a} into {b}'s place, so their positions should be exchanged */
     exchange(a: string, b: string): void;
 }
+declare type EmptyLocation = {
+    left: number;
+    top: number;
+};
 interface ISlideGridState {
     active?: HTMLElement;
-    emptyLocation?: {
-        left: number;
-        top: number;
-    };
+    emptyLocation?: EmptyLocation;
     location?: ILocation;
     wiggle?: boolean;
 }
