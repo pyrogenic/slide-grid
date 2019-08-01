@@ -22,7 +22,7 @@ interface ISlideGridProps {
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
      */
-    canExchange?(a: string, b?: string): boolean;
+    canExchange?(a: string, b?: string): boolean | number;
     /** the player has finished an interaction that did not result in a {tap} or {exchange} */
     done?(key: string): void;
     /** the player clicked or tapped on {key} */
