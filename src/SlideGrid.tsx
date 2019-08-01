@@ -55,7 +55,7 @@ interface ISlideGridProps {
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
      */
-    canExchange?(a: string, b?: string): boolean;
+    canExchange?(a: string, b?: string): boolean | number;
 
     /** the player has finished an interaction that did not result in a {tap} or {exchange} */
     done?(key: string): void;
@@ -173,7 +173,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     }
 
     /** thunk — default behavior: any pair may be picked up or exchanged */
-    private canExchange = (a: string, b?: string): boolean => {
+    private canExchange = (a: string, b?: string): boolean | number => {
         const {canExchange} = this.props;
         if (canExchange === undefined) {
             return true;
@@ -219,7 +219,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const {active, location} = this.state;
         if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
             let isDragging = active.classList.contains(DRAGGING);
-            if (!isDragging && this.canExchange(active.id)) {
+            if (!isDragging && this.canExchange(active.id) !== false) {
                 this.setState({wiggle: true});
             }
         }
@@ -301,8 +301,9 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 if (a === b) {
                     return;
                 }
-                if (this.canExchange(a, b)) {
-                    neighbors[b] = 1;
+                const cost = this.canExchange(a, b);
+                if (cost !== false) {
+                    neighbors[b] = cost === true ? 1 : cost;
                 }
             });
             graph.addNode(a, neighbors);
@@ -345,7 +346,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 },
             });
             setTimeout(() => {
-                if (this.state.active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id)) {
+                if (this.state.active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id) !== false) {
                     target.classList.add(PRE_DRAGGING);
                 }
             }, 100);
@@ -375,7 +376,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let isDragging = active.classList.contains(DRAGGING);
             const d2 = dx * dx + dy * dy;
             if (!isDragging && d2 > this.tuning.dragStartDistanceSquared) {
-                if (this.canExchange(active.id)) {
+                if (this.canExchange(active.id) !== false) {
                     active.classList.add(DRAGGING);
                     isDragging = true;
                 }
