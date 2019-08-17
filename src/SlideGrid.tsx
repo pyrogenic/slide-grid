@@ -12,7 +12,7 @@ const SLIDE_GRID = "slide-grid";
 const WIGGLE = "wiggle";
 
 /** CSS classname added to an object under a mouse- or touch-down that's lasted at least 100ms that isn't yet being dragged */
-const PRE_DRAGGING = "pre-dragging";
+// const PRE_DRAGGING = "pre-dragging";
 
 /** CSS classname of the object being dragged under the cursor */
 const DRAGGING = "dragging";
@@ -25,7 +25,7 @@ export interface ISlideGridTuning {
     slideDurationMS: number;
     smearDistanceSquaredMin: number;
     smearDistanceSquaredMax: number;
-    touchTapDurationMaxMS: number;
+    longPressDurationMS: number;
     motionOnRails: boolean;
     keepDragInBounds: boolean;
     ignoreDragOutOfBounds: boolean;
@@ -36,7 +36,7 @@ export const DEFAULT_TUNING: ISlideGridTuning = {
     slideDurationMS: 100,
     smearDistanceSquaredMin: 20,
     smearDistanceSquaredMax: 500,
-    touchTapDurationMaxMS: 300,
+    longPressDurationMS: 300,
     motionOnRails: false,
     keepDragInBounds: false,
     ignoreDragOutOfBounds: false,
@@ -48,7 +48,7 @@ interface ISlideGridProps {
      */
     className?: string;
 
-    tuning?: ISlideGridTuning;
+    tuning?: Partial<ISlideGridTuning>;
 
     /**
      * @param a key of the tile a user is interacting with
@@ -76,6 +76,7 @@ type EmptyLocation = {
 };
 
 interface ISlideGridState {
+    tuning: ISlideGridTuning;
     active?: HTMLElement;
     emptyLocation?: EmptyLocation;
     location?: ILocation;
@@ -100,6 +101,8 @@ interface IInputEvent {
     touchCount?: number;
 }
 
+const DRAGGING_STYLE_TRANSFORM = "scale(1.25)";
+
 /**
  * Immediate children must have the same "key" and "id" attributes:
  *  - key is used when dealing with the React side of things
@@ -113,7 +116,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     constructor(props: ISlideGridProps) {
         super(props);
-        this.state = {};
+        const tuning = {...DEFAULT_TUNING, ...props.tuning};
+        this.state = {tuning};
         this.uniqueId = `slide-grid-${++SLIDE_GRID_INSTANCE_ID}`;
     }
 
@@ -169,7 +173,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     }
 
     private get tuning(): ISlideGridTuning {
-        return this.props.tuning || DEFAULT_TUNING;
+        return this.state.tuning;
     }
 
     /** thunk — default behavior: any pair may be picked up or exchanged */
@@ -216,13 +220,16 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     /** detects long-presses: a long touch where the touch doesn't move enough to start a drag. */
     private tick = () => {
-        const {active, location} = this.state;
-        if (active && this.lastInputEvent.touchCount !== undefined && location && (Date.now() - location.timestamp) > 300) {
-            let isDragging = active.classList.contains(DRAGGING);
-            if (!isDragging && this.canExchange(active.id) !== false) {
-                this.setState({wiggle: true});
-            }
-        }
+        // const {active, location} = this.state;
+        // const touching = this.lastInputEvent.touchCount !== undefined;
+        // const dt = location && Date.now() - location.timestamp;
+        // if (active && touching && dt && dt > this.state.tuning.slideDurationMS) {
+        //     if (!this.state.wiggle) {
+        //         if (this.canExchange(active.id) !== false) {
+        //             this.setState({wiggle: true});
+        //         }
+        //     }
+        // }
     }
 
     /** @returns the child under the given event, passing through the actively-dragged child, if any */
@@ -263,9 +270,11 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const emptyLocation = this.state.emptyLocation;
         // After an exchange, make sure we know the new location of the dragged child,
         // then update its transform so it appears that it hasn't moved from under the cursor.
-        if (target && location && emptyLocation) {
+        if (target && location && emptyLocation && target.classList.contains(DRAGGING)) {
+            console.log("clear target transform");
             target.style.transform = null;
             const rect = target.getBoundingClientRect();
+            target.style.transform = DRAGGING_STYLE_TRANSFORM;
             if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
                 || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
                 const newEmptyLocation = {
@@ -287,7 +296,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             }
         }
         this.buildGraph();
-        console.log(this.lastInputEvent);
         if (this.lastInputEvent.kind === "move") {
             this.onMouseOrTouchMove(this.lastInputEvent, true);
         }
@@ -334,22 +342,42 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 left: rect.left,
                 top: rect.top,
             }
+            const downEventX = event.clientX;
+            const downEventY = event.clientY;
+            const touching = event.touchCount !== undefined;
+            console.log({touching});
             this.setState({
                 active: target,
                 emptyLocation,
                 location: {
                     timestamp: Date.now(),
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    offsetX: event.clientX - rect.left,
-                    offsetY: event.clientY - rect.top,
+                    clientX: downEventX,
+                    clientY: downEventY,
+                    offsetX: downEventX - rect.left,
+                    offsetY: downEventY - rect.top,
                 },
             });
             setTimeout(() => {
-                if (this.state.active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id) !== false) {
-                    target.classList.add(PRE_DRAGGING);
+                const {active} = this.state;
+                if (active !== target) {
+                    return;
                 }
-            }, 100);
+                if (touching && this.props.smear) {
+                    const lastEventX = this.lastInputEvent.clientX;
+                    const lastEventY = this.lastInputEvent.clientY;
+                    let dx = Math.abs(downEventX - lastEventX);
+                    let dy = Math.abs(downEventY - lastEventY);
+                    const d2 = dx * dx + dy * dy;
+                    if (d2 > this.tuning.smearDistanceSquaredMin) {
+                        console.log("Moved too far with touch — smearing instead of bulging");
+                        return;
+                    }
+                }
+                if (active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id) !== false) {
+                    target.classList.add(DRAGGING);
+                    target.style.transform = DRAGGING_STYLE_TRANSFORM;
+                }
+            }, this.tuning.longPressDurationMS);
         }
     }
 
@@ -359,7 +387,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         if (!active || !activeLocation) {
             return;
         }
-        let canDrag = event.touchCount === undefined || event.touchCount > 1 || this.state.wiggle;
+        console.log({touchCount: event.touchCount, wiggle: this.state.wiggle});
+        let canDrag = event.touchCount === undefined || event.touchCount > 1 || active.classList.contains(DRAGGING);
         let dx = event.clientX - activeLocation.clientX;
         let dy = event.clientY - activeLocation.clientY;
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
@@ -405,8 +434,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         dy = bounds.bottom - activeBounds.bottom;
                     }
                 }
-                active.classList.remove(PRE_DRAGGING);
-                active.style.transform = `translate(${dx}px,${dy}px)`;
+                const newTransform = `translate(${dx}px,${dy}px) ${DRAGGING_STYLE_TRANSFORM}`;
+                active.style.transform = newTransform;
                 if (target) {
                     if (target === active) {
                         return;
@@ -423,7 +452,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     })) {
                         return;
                     }
-                    console.log(path.join());
                     let newLocation = emptyLocation!
                     while (path.length > 0) {
                         const exchangeTarget = document.getElementById(path.shift()!)!;
@@ -447,7 +475,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     }
                 }
             }
-        } else if (target) { // touching something
+        } else if (target && this.props.smear) { // touching something
             const targetX = (target.getBoundingClientRect().left + target.getBoundingClientRect().right) / 2;
             const targetY = (target.getBoundingClientRect().top + target.getBoundingClientRect().bottom) / 2;
             let dx = Math.abs(event.clientX - targetX);
@@ -466,14 +494,13 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         let done: string;
         if (state.active) {
             done = state.active.id;
-            state.active.classList.remove(PRE_DRAGGING);
             if (state.active.classList.contains(DRAGGING)) {
                 state.active.classList.remove(DRAGGING);
             } else if (event.touchCount === undefined) {
                 click = state.active.id;
             } else if (target === state.active && state.location) {
                 const dt = Date.now() - state.location.timestamp;
-                if (dt < this.tuning.touchTapDurationMaxMS) {
+                if (dt < this.tuning.longPressDurationMS) {
                     click = state.active.id;
                 }
             }
@@ -512,7 +539,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         clientX /= touchCount;
         clientY /= touchCount;
         this.lastInputEvent = { kind, target: event.target, clientX, clientY, touchCount }
-        console.log(this.lastInputEvent);
         return this.lastInputEvent;
     }
 }
