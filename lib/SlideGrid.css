@@ -1,3 +1,12 @@
+@keyframes bulge {
+    0% {
+        transform: initial;
+    }
+    100% {
+        
+    }
+}
+
 .slide-grid {
     user-select: none;
     touch-action: none;  
@@ -7,6 +16,16 @@
     position: relative;
 }
 
-.dragging {
+.tile.dragging {
+    transform-origin: 50% 50%;
+}
+
+/* 
+.tile.dragging {
+    transition-duration: 100ms;
+    transition-timing-function: ease-in;
+    transition-property: "transform";
+    transform: scale(1.25);
     z-index: 1;
 }
+*/

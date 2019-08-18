@@ -5,7 +5,7 @@ export interface ISlideGridTuning {
     slideDurationMS: number;
     smearDistanceSquaredMin: number;
     smearDistanceSquaredMax: number;
-    touchTapDurationMaxMS: number;
+    longPressDurationMS: number;
     motionOnRails: boolean;
     keepDragInBounds: boolean;
     ignoreDragOutOfBounds: boolean;
@@ -16,7 +16,7 @@ interface ISlideGridProps {
      * CSS class name for the main element.
      */
     className?: string;
-    tuning?: ISlideGridTuning;
+    tuning?: Partial<ISlideGridTuning>;
     /**
      * @param a key of the tile a user is interacting with
      * @param b key of the tile that might be exchanged with {a}
@@ -37,6 +37,7 @@ declare type EmptyLocation = {
     top: number;
 };
 interface ISlideGridState {
+    tuning: ISlideGridTuning;
     active?: HTMLElement;
     emptyLocation?: EmptyLocation;
     location?: ILocation;
