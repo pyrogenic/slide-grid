@@ -1,6 +1,6 @@
 {
   "name": "@pyrogenic/slide-grid",
-  "version": "0.1.14",
+  "version": "1.0.0",
   "description": "React Touch-enabled Sliding Tile Grid",
   "repository": {
     "type": "git",
@@ -40,5 +40,6 @@
   },
   "release": {
     "publishDir": "lib"
-  }
+  },
+  "private": false
 }
