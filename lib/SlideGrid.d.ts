@@ -64,14 +64,14 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     render(): JSX.Element;
     componentDidMount(): void;
     componentWillUnmount(): void;
-    private readonly myDomElement;
+    private get myDomElement();
     /** the list of our React children. */
-    private readonly children;
+    private get children();
     /** the list of the React keys of our {children}. */
-    private readonly keys;
+    private get keys();
     /** the list of DOM elements which are the visual manifestations of our React {children}. */
-    private readonly childElements;
-    private readonly tuning;
+    private get childElements();
+    private get tuning();
     /** thunk — default behavior: any pair may be picked up or exchanged */
     private canExchange;
     /** thunk — default behavior: no-op */

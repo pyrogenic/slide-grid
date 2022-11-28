@@ -272,7 +272,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         // then update its transform so it appears that it hasn't moved from under the cursor.
         if (target && location && emptyLocation && target.classList.contains(DRAGGING)) {
             console.log("clear target transform");
-            target.style.transform = null;
+            target.style.transform = "";
             const rect = target.getBoundingClientRect();
             target.style.transform = DRAGGING_STYLE_TRANSFORM;
             if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
@@ -440,7 +440,13 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     if (target === active) {
                         return;
                     }
-                    const path: string[] | undefined = this.graph.path(active.id, target.id);
+                    const pathOrResult = this.graph.path(active.id, target.id);
+                    var path: string[] | undefined;
+                    if (Array.isArray(pathOrResult)) {
+                        path = pathOrResult;
+                    } else {
+                        path = pathOrResult?.path;
+                    }
                     if (!path) {
                         return;
                     }
@@ -468,7 +474,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         const b = exchangeTarget.id;
                         setTimeout(() => {
                             exchangeTarget.classList.remove(SLIDING);
-                            exchangeTarget.style.transform = null;
+                            exchangeTarget.style.transform = "";
                             exchangeTarget.style.transition = "";
                             this.exchange(a, b);
                         }, this.tuning.slideDurationMS);
@@ -504,7 +510,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     click = state.active.id;
                 }
             }
-            state.active.style.transform = null;
+            state.active.style.transform = "";
         }
         this.setState({ active: undefined, location: undefined, wiggle: false }, () => {
             if (click) {
