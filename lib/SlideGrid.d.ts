@@ -60,7 +60,24 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private uniqueId;
     private tickHandle;
     private graph;
+    private lastSmear?;
     constructor(props: ISlideGridProps);
+    static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState: ISlideGridState): {
+        tuning: {
+            dragStartDistanceSquared: number;
+            slideDurationMS: number;
+            smearDistanceSquaredMin: number;
+            smearDistanceSquaredMax: number;
+            longPressDurationMS: number;
+            motionOnRails: boolean;
+            keepDragInBounds: boolean;
+            ignoreDragOutOfBounds: boolean;
+        };
+        active?: HTMLElement | undefined;
+        emptyLocation?: EmptyLocation | undefined;
+        location?: ILocation | undefined;
+        wiggle?: boolean | undefined;
+    };
     render(): JSX.Element;
     componentDidMount(): void;
     componentWillUnmount(): void;
