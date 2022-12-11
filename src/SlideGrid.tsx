@@ -382,8 +382,9 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         if (!active || !activeLocation) {
             return;
         }
-        //console.log({ onlyUpdateActive, target: target && target.id, active: active.id });
-        let canDrag = event.touchCount === undefined || event.touchCount > 1 || active.classList.contains(DRAGGING);
+        const activeIsDragging = active.classList.contains(DRAGGING);
+        let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
+        console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
         let dx = event.clientX - activeLocation.clientX;
         let dy = event.clientY - activeLocation.clientY;
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
