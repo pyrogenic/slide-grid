@@ -56,12 +56,12 @@ interface ILocation {
  *  - id is used when manipulating the DOM.
  */
 declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
-    private lastInputEvent;
+    private lastInputEvent?;
     private uniqueId;
     private graph;
     private lastSmear?;
     constructor(props: ISlideGridProps);
-    static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState: ISlideGridState): {
+    static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState?: ISlideGridState): {
         tuning: {
             dragStartDistanceSquared: number;
             slideDurationMS: number;
@@ -79,7 +79,6 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     };
     render(): JSX.Element;
     componentDidMount(): void;
-    componentWillUnmount(): void;
     private get myDomElement();
     /** the list of our React children. */
     private get children();

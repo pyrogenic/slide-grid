@@ -109,17 +109,18 @@ const DRAGGING_STYLE_TRANSFORM = "scale(1.25)";
  *  - id is used when manipulating the DOM.
  */
 class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
-    private lastInputEvent: IInputEvent = {} as any;
+    private lastInputEvent?: IInputEvent;
     private uniqueId: string;
     private graph!: Graph;
     private lastSmear?: string;
 
     constructor(props: ISlideGridProps) {
         super(props);
+        this.state = SlideGrid.getDerivedStateFromProps(props);
         this.uniqueId = `slide-grid-${++SLIDE_GRID_INSTANCE_ID}`;
     }
 
-    public static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState: ISlideGridState) {
+    public static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState?: ISlideGridState) {
         return { ...prevState, tuning: { ...DEFAULT_TUNING, ...nextProps.tuning } };
     }
 
@@ -146,13 +147,13 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         this.buildGraph();
     }
 
-    public componentWillUnmount() {
-        const tickHandle = this.tickHandle;
-        if (tickHandle !== undefined) {
-            this.tickHandle = undefined;
-            clearInterval(this.tickHandle);
-        }
-    }
+    // public componentWillUnmount() {
+    //     const tickHandle = this.tickHandle;
+    //     if (tickHandle !== undefined) {
+    //         this.tickHandle = undefined;
+    //         clearInterval(this.tickHandle);
+    //     }
+    // }
 
     private get myDomElement()  {
         return document.getElementById(this.uniqueId);
@@ -289,7 +290,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             }
         }
         this.buildGraph();
-        if (this.lastInputEvent.kind === "move") {
+        if (this.lastInputEvent?.kind === "move") {
             this.onMouseOrTouchMove(this.lastInputEvent, true);
         }
     }
@@ -356,7 +357,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 if (active !== target) {
                     return;
                 }
-                if (touching && this.props.smear) {
+                if (touching && this.props.smear && this.lastInputEvent) {
                     const lastEventX = this.lastInputEvent.clientX;
                     const lastEventY = this.lastInputEvent.clientY;
                     let dx = Math.abs(downEventX - lastEventX);
