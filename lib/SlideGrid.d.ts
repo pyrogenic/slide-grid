@@ -58,7 +58,6 @@ interface ILocation {
 declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private lastInputEvent;
     private uniqueId;
-    private tickHandle;
     private graph;
     private lastSmear?;
     constructor(props: ISlideGridProps);
@@ -99,8 +98,6 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private smear;
     /** thunk */
     private exchange;
-    /** detects long-presses: a long touch where the touch doesn't move enough to start a drag. */
-    private tick;
     /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget;
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;

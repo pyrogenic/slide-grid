@@ -111,7 +111,6 @@ const DRAGGING_STYLE_TRANSFORM = "scale(1.25)";
 class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private lastInputEvent: IInputEvent = {} as any;
     private uniqueId: string;
-    private tickHandle: any;
     private graph!: Graph;
     private lastSmear?: string;
 
@@ -144,7 +143,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         } else {
             console.warn(`Couldn't find myself in the DOM, touch support unavailable. (id: ${this.uniqueId})`);
         }
-        this.tickHandle = setInterval(this.tick, 100);
         this.buildGraph();
     }
 
@@ -220,20 +218,6 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const {exchange} = this.props;
         exchange(a, b);
     };
-
-    /** detects long-presses: a long touch where the touch doesn't move enough to start a drag. */
-    private tick = () => {
-        // const {active, location} = this.state;
-        // const touching = this.lastInputEvent.touchCount !== undefined;
-        // const dt = location && Date.now() - location.timestamp;
-        // if (active && touching && dt && dt > this.state.tuning.slideDurationMS) {
-        //     if (!this.state.wiggle) {
-        //         if (this.canExchange(active.id) !== false) {
-        //             this.setState({wiggle: true});
-        //         }
-        //     }
-        // }
-    }
 
     /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget = (event: IInputEvent): HTMLElement | undefined => {
