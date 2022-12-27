@@ -18,6 +18,10 @@ interface ISlideGridProps {
     className?: string;
     tuning?: Partial<ISlideGridTuning>;
     /**
+     * An optional list of keys to use instead of the keys of our immediate children.
+     */
+    keys?: string[];
+    /**
      * @param a key of the tile a user is interacting with
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
@@ -38,7 +42,7 @@ declare type EmptyLocation = {
 };
 interface ISlideGridState {
     tuning: ISlideGridTuning;
-    active?: HTMLElement;
+    active?: string;
     emptyLocation?: EmptyLocation;
     location?: ILocation;
     wiggle?: boolean;
@@ -60,6 +64,8 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private uniqueId;
     private graph;
     private lastSmear?;
+    private onTick?;
+    private tickHandle?;
     constructor(props: ISlideGridProps);
     static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState?: ISlideGridState): {
         tuning: {
@@ -72,16 +78,15 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
             keepDragInBounds: boolean;
             ignoreDragOutOfBounds: boolean;
         };
-        active?: HTMLElement | undefined;
+        active?: string | undefined;
         emptyLocation?: EmptyLocation | undefined;
         location?: ILocation | undefined;
         wiggle?: boolean | undefined;
     };
     render(): JSX.Element;
     componentDidMount(): void;
+    componentWillUnmount(): void;
     private get myDomElement();
-    /** the list of our React children. */
-    private get children();
     /** the list of the React keys of our {children}. */
     private get keys();
     /** the list of DOM elements which are the visual manifestations of our React {children}. */
@@ -99,6 +104,7 @@ declare class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState
     private exchange;
     /** @returns the child under the given event, passing through the actively-dragged child, if any */
     private getTarget;
+    private get active();
     componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState): void;
     private buildGraph;
     private onMouseDown;

@@ -51,6 +51,11 @@ interface ISlideGridProps {
     tuning?: Partial<ISlideGridTuning>;
 
     /**
+     * An optional list of keys to use instead of the keys of our immediate children.
+     */
+    keys?: string[];
+
+    /**
      * @param a key of the tile a user is interacting with
      * @param b key of the tile that might be exchanged with {a}
      * @returns {true} if {a} may be moved at all, and if given, may be exchanged with {b}
@@ -77,7 +82,7 @@ type EmptyLocation = {
 
 interface ISlideGridState {
     tuning: ISlideGridTuning;
-    active?: HTMLElement;
+    active?: string;
     emptyLocation?: EmptyLocation;
     location?: ILocation;
     wiggle?: boolean;
@@ -113,23 +118,45 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     private uniqueId: string;
     private graph!: Graph;
     private lastSmear?: string;
-
+    private onTick?: ()=> void;
+    private tickHandle?: NodeJS.Timeout;
+    
     constructor(props: ISlideGridProps) {
         super(props);
         this.state = SlideGrid.getDerivedStateFromProps(props);
         this.uniqueId = `slide-grid-${++SLIDE_GRID_INSTANCE_ID}`;
+        if (this.onTick) {
+            this.tickHandle = setInterval(this.onTick, 1);
+        }
     }
+    
+    //lastActive: HTMLElement | null | undefined;
+    // private onTick = () => {
+    //     if (this.lastActive != this.active) {
+    //         console.log({ lastActive: this.lastActive, active: this.active });
+    //     }
+    //     this.active?.classList.add(DRAGGING);
+    //     this.lastActive = this.active;
+    // };
+
 
     public static getDerivedStateFromProps(nextProps: Readonly<ISlideGridProps>, prevState?: ISlideGridState) {
         return { ...prevState, tuning: { ...DEFAULT_TUNING, ...nextProps.tuning } };
     }
 
     public render() {
+        // if (this.active?.classList.contains(DRAGGING)) {
+        //     console.log({active: this.active});
+        //     setTimeout(() => {
+        //         this.active?.classList.add(DRAGGING);
+        //         console.log({activePost: this.active});
+        //     }, 1);
+        // }
         return <div id={this.uniqueId} className={compact([SLIDE_GRID, this.props.className, this.state.wiggle && WIGGLE]).join(" ")}
             onMouseDown={this.onMouseDown}
             onMouseMove={this.onMouseMove}
             onMouseUp={this.onMouseUp}>
-            {this.children}
+            {this.props.children}
         </div>;
     }
 
@@ -147,26 +174,24 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         this.buildGraph();
     }
 
-    // public componentWillUnmount() {
-    //     const tickHandle = this.tickHandle;
-    //     if (tickHandle !== undefined) {
-    //         this.tickHandle = undefined;
-    //         clearInterval(this.tickHandle);
-    //     }
-    // }
+    public componentWillUnmount() {
+        const tickHandle = this.tickHandle;
+        if (tickHandle !== undefined) {
+            this.tickHandle = undefined;
+            clearInterval(this.tickHandle);
+        }
+    }
 
     private get myDomElement()  {
         return document.getElementById(this.uniqueId);
     }
 
-    /** the list of our React children. */
-    private get children(): any[] {
-        return (this.props.children || []) as any[];
-    }
-
     /** the list of the React keys of our {children}. */
     private get keys(): string[] {
-        return this.children.map((child) => child.key);
+        if (this.props.keys) {
+            return this.props.keys;
+        }
+        return (this.props.children as React.ReactElement[]).map((child) => child.key as string);
     }
 
     /** the list of DOM elements which are the visual manifestations of our React {children}. */
@@ -229,7 +254,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const x = event.clientX;
         const y = event.clientY;
-        if (target && this.state.active === target) {
+        if (target && this.active === target) {
             var insideActive = false;
             const otherTarget = this.childElements.find((element) => {
                 const rect = element.getBoundingClientRect();
@@ -258,8 +283,20 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         return target;
     }
 
+    private get active() {
+        const {active: activeId} = this.state;
+        if (!activeId) {
+            return undefined;
+        }
+        const active = document.getElementById(activeId);
+        if (!active) {
+            console.warn(`Bad active: ${activeId}`);
+        }
+        return active;
+    }
+
     public componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState) {
-        const target = this.state.active;
+        const target = this.active;
         const location = this.state.location;
         const emptyLocation = this.state.emptyLocation;
         // After an exchange, make sure we know the new location of the dragged child,
@@ -342,7 +379,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             //console.log({touching});
             this.lastSmear = undefined;
             this.setState({
-                active: target,
+                active: target.id,
                 emptyLocation,
                 location: {
                     timestamp: Date.now(),
@@ -353,7 +390,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 },
             });
             setTimeout(() => {
-                const {active} = this.state;
+                const active = this.active;
                 if (active !== target) {
                     return;
                 }
@@ -378,13 +415,14 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     private onMouseOrTouchMove = (event: IInputEvent, onlyUpdateActive: boolean = false) => {
         const target = !onlyUpdateActive && this.getTarget(event);
-        const { active, emptyLocation, location: activeLocation } = this.state;
+        const active = this.active;
+        const { emptyLocation, location: activeLocation } = this.state;
         if (!active || !activeLocation) {
             return;
         }
         const activeIsDragging = active.classList.contains(DRAGGING);
         let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
-        console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
+        //console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
         let dx = event.clientX - activeLocation.clientX;
         let dy = event.clientY - activeLocation.clientY;
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
@@ -490,7 +528,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dy = Math.abs(event.clientY - targetY);
             const d2 = dx * dx + dy * dy;
             if (target === active ? d2 > this.tuning.smearDistanceSquaredMin : d2 < this.tuning.smearDistanceSquaredMax) {
-                //console.log(`smear from ${this.lastSmear} --> ${target.id} (d2: ${d2}, active: ${active?.id ?? undefined})`);
+                console.log(`smear from ${this.lastSmear} --> ${target.id} (d2: ${d2}, active: ${active?.id ?? undefined})`);
                 this.lastSmear = target.id;
                 this.smear(target.id);
             }
@@ -502,22 +540,23 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const state = this.state;
         let click: string;
         let done: string;
-        if (state.active) {
-            if (state.active.classList.contains(DRAGGING)) {
-                state.active.classList.remove(DRAGGING);
+        const active = this.active;
+        if (active) {
+            if (active.classList.contains(DRAGGING)) {
+                active.classList.remove(DRAGGING);
             } else if (event.touchCount === undefined) {
-                click = state.active.id;
-            } else if (target === state.active && state.location) {
+                click = active.id;
+            } else if (target === active && state.location) {
                 const dt = Date.now() - state.location.timestamp;
                 if (dt < this.tuning.longPressDurationMS) {
-                    click = state.active.id;
+                    click = active.id;
                 } else {
-                    done = state.active.id;
+                    done = active.id;
                 }
             } else {
-                done = state.active.id;
+                done = active.id;
             }
-            state.active.style.transform = "";
+            active.style.transform = "";
         }
         this.setState({ active: undefined, location: undefined, wiggle: false }, () => {
             if (click) {

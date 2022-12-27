@@ -11,7 +11,7 @@
   "main": "lib/index.js",
   "module": "lib/es/index.js",
   "scripts": {
-    "build": "rm -rf lib && mkdir lib && find src -name '*.css' -exec cp -v \\{\\} lib \\; && yarn run tsc",
+    "build": "yarn run tsc",
     "preversion": "yarn build",
     "watch": "yarn build --watch"
   },

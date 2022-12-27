@@ -1,13 +1,1 @@
-.slide-grid {
-    user-select: none;
-    touch-action: none;
-}
-
-.slide-grid>* {
-    position: relative;
-}
-
-.slide-grid .dragging {
-    transform-origin: 50% 50%;
-    z-index: 1;
-}
+../src/SlideGrid.css
