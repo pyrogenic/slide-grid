@@ -3,12 +3,11 @@
     touch-action: none;
 }
 
-.slide-grid>* {
+.slide-grid .tile {
     position: relative;
 }
 
 .slide-grid .dragging {
     transform-origin: 50% 50%;
-    position: relative;
     z-index: 1;
 }

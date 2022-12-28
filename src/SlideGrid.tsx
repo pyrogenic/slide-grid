@@ -78,6 +78,8 @@ interface ISlideGridProps {
 type EmptyLocation = {
     left: number;
     top: number;
+    parentX: number;
+    parentY: number;
 };
 
 interface ISlideGridState {
@@ -94,6 +96,8 @@ interface ILocation {
     clientY: number;
     offsetX: number;
     offsetY: number;
+    parentX: number;
+    parentY: number;
 }
 
 type InputEventType = "down" | "move" | "up";
@@ -196,7 +200,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     /** the list of DOM elements which are the visual manifestations of our React {children}. */
     private get childElements(): HTMLElement[] {
-        return compact(this.keys.map((e) => document.getElementById(e)));
+        const result = compact(this.keys.map((e) => document.getElementById(e)));
+        return result;
     }
 
     private get tuning(): ISlideGridTuning {
@@ -296,21 +301,22 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     }
 
     public componentDidUpdate(prevProps: ISlideGridProps, prevState: ISlideGridState) {
-        const target = this.active;
+        const active = this.active;
         const location = this.state.location;
         const emptyLocation = this.state.emptyLocation;
         // After an exchange, make sure we know the new location of the dragged child,
         // then update its transform so it appears that it hasn't moved from under the cursor.
-        if (target && location && emptyLocation && target.classList.contains(DRAGGING)) {
-            //console.log("clear target transform");
-            target.style.transform = "";
-            const rect = target.getBoundingClientRect();
-            target.style.transform = DRAGGING_STYLE_TRANSFORM;
+        if (active && location && emptyLocation && active.classList.contains(DRAGGING)) {
+            active.style.transform = "";
+            const rect = active.getBoundingClientRect();
+            active.style.transform = DRAGGING_STYLE_TRANSFORM;
             if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
-                || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
+            || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
                 const newEmptyLocation = {
                     left: rect.left,
                     top: rect.top,
+                    parentX: active.parentElement!.offsetLeft, 
+                    parentY: active.parentElement!.offsetTop, 
                 }
                 const newState = {
                     emptyLocation: newEmptyLocation,
@@ -320,8 +326,12 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         clientY: newEmptyLocation.top + location.offsetY,
                         offsetX: location.offsetX,
                         offsetY: location.offsetY,
+                        parentX: newEmptyLocation.parentX,
+                        parentY: newEmptyLocation.parentY,
                     },
                 };
+                console.log("newEmptyLocation");
+                console.log(newEmptyLocation);
                 this.setState(newState);
                 return;
             }
@@ -387,6 +397,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     clientY: downEventY,
                     offsetX: downEventX - rect.left,
                     offsetY: downEventY - rect.top,
+                    parentX: target.parentElement!.offsetLeft,
+                    parentY: target.parentElement!.offsetTop,
                 },
             });
             setTimeout(() => {
@@ -423,8 +435,13 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const activeIsDragging = active.classList.contains(DRAGGING);
         let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
         //console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
-        let dx = event.clientX - activeLocation.clientX;
-        let dy = event.clientY - activeLocation.clientY;
+        let dx = event.clientX - activeLocation.clientX;// - activeLocation.parentX + ;
+        let dy = event.clientY - activeLocation.clientY;// - activeLocation.parentY + active.parentElement!.offsetTop;
+        let parentOffsetX = active.parentElement!.offsetLeft - activeLocation.parentX;
+        let parentOffsetY = active.parentElement!.offsetTop - activeLocation.parentY;
+        dx -= parentOffsetX;
+        dy -= parentOffsetY;
+        console.log(activeLocation);
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
             const bounds = active.parentElement!.getBoundingClientRect();
             const activeBounds = active.getBoundingClientRect();
@@ -440,6 +457,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             const d2 = dx * dx + dy * dy;
             if (!isDragging && d2 > this.tuning.dragStartDistanceSquared) {
                 if (this.canExchange(active.id) !== false) {
+                    // Start dragging active
                     active.classList.add(DRAGGING);
                     isDragging = true;
                 }
@@ -495,12 +513,19 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     let newLocation = emptyLocation!
                     while (path.length > 0) {
                         const exchangeTarget = document.getElementById(path.shift()!)!;
-                        const er = exchangeTarget.getBoundingClientRect();
+                        const exchangeTargetRect = exchangeTarget.getBoundingClientRect();
+                        const exchangeTargetParentX = exchangeTarget.parentElement!.offsetLeft;
+                        const exchangeTargetParentY = exchangeTarget.parentElement!.offsetTop;
                         const emptyLeft = newLocation.left;
                         const emptyTop = newLocation.top;
-                        const sdx = emptyLeft - er.left;
-                        const sdy = emptyTop - er.top;
-                        newLocation = er;
+                        const sdx = emptyLeft - exchangeTargetRect.left - newLocation.parentX + exchangeTargetParentX;
+                        const sdy = emptyTop - exchangeTargetRect.top - newLocation.parentY + exchangeTargetParentY;
+                        newLocation = { 
+                            left: exchangeTargetRect.left, 
+                            top: exchangeTargetRect.top, 
+                            parentX: exchangeTargetParentX,
+                            parentY: exchangeTargetParentY,
+                        };
                         exchangeTarget.classList.add(SLIDING);
                         exchangeTarget.style.transform = `translate(${sdx}px,${sdy}px)`;
                         exchangeTarget.style.transition = `all ${this.tuning.slideDurationMS}ms ease-in-out`;

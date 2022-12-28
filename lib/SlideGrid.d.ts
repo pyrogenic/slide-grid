@@ -39,6 +39,8 @@ interface ISlideGridProps {
 declare type EmptyLocation = {
     left: number;
     top: number;
+    parentX: number;
+    parentY: number;
 };
 interface ISlideGridState {
     tuning: ISlideGridTuning;
@@ -53,6 +55,8 @@ interface ILocation {
     clientY: number;
     offsetX: number;
     offsetY: number;
+    parentX: number;
+    parentY: number;
 }
 /**
  * Immediate children must have the same "key" and "id" attributes:
