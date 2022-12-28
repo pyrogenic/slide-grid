@@ -247,6 +247,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
     /** thunk */
     private exchange = (a: string, b: string) => {
         const {exchange} = this.props;
+        console.log(`exchange(${a}, ${b})`)
         exchange(a, b);
     };
 
@@ -309,14 +310,18 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         if (active && location && emptyLocation && active.classList.contains(DRAGGING)) {
             active.style.transform = "";
             const rect = active.getBoundingClientRect();
+            const activeParentX = active.parentElement!.offsetLeft;
+            const activeParentY = active.parentElement!.offsetTop;
             active.style.transform = DRAGGING_STYLE_TRANSFORM;
             if (rect.left.toFixed(0) !== emptyLocation.left.toFixed(0)
-            || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)) {
+                || rect.top.toFixed(0) !== emptyLocation.top.toFixed(0)
+                || activeParentX.toFixed(0) != emptyLocation.parentX.toFixed(0)
+                || activeParentY.toFixed(0) != emptyLocation.parentY.toFixed(0)) {
                 const newEmptyLocation = {
                     left: rect.left,
                     top: rect.top,
-                    parentX: active.parentElement!.offsetLeft, 
-                    parentY: active.parentElement!.offsetTop, 
+                    parentX: activeParentX, 
+                    parentY: activeParentY, 
                 }
                 const newState = {
                     emptyLocation: newEmptyLocation,
@@ -379,14 +384,17 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const target = this.getTarget(event);
         if (target) {
             const rect = target.getBoundingClientRect();
-            const emptyLocation = {
+            const targetParentX = target.parentElement!.offsetLeft;
+            const targetParentY = target.parentElement!.offsetTop;
+            const emptyLocation: EmptyLocation = {
                 left: rect.left,
                 top: rect.top,
+                parentX: targetParentX,
+                parentY: targetParentY,
             }
             const downEventX = event.clientX;
             const downEventY = event.clientY;
             const touching = event.touchCount !== undefined;
-            //console.log({touching});
             this.lastSmear = undefined;
             this.setState({
                 active: target.id,
@@ -397,8 +405,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     clientY: downEventY,
                     offsetX: downEventX - rect.left,
                     offsetY: downEventY - rect.top,
-                    parentX: target.parentElement!.offsetLeft,
-                    parentY: target.parentElement!.offsetTop,
+                    parentX: targetParentX,
+                    parentY: targetParentY,
                 },
             });
             setTimeout(() => {
@@ -413,7 +421,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     let dy = Math.abs(downEventY - lastEventY);
                     const d2 = dx * dx + dy * dy;
                     if (d2 > this.tuning.smearDistanceSquaredMin) {
-                        //console.log("Moved too far with touch — smearing instead of bulging");
+                        // console.log("Moved too far with touch — smearing instead of bulging");
                         return;
                     }
                 }
@@ -430,18 +438,19 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const active = this.active;
         const { emptyLocation, location: activeLocation } = this.state;
         if (!active || !activeLocation) {
+            console.log({active, activeLocation});
             return;
         }
         const activeIsDragging = active.classList.contains(DRAGGING);
         let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
         //console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
-        let dx = event.clientX - activeLocation.clientX;// - activeLocation.parentX + ;
-        let dy = event.clientY - activeLocation.clientY;// - activeLocation.parentY + active.parentElement!.offsetTop;
-        let parentOffsetX = active.parentElement!.offsetLeft - activeLocation.parentX;
-        let parentOffsetY = active.parentElement!.offsetTop - activeLocation.parentY;
+        let dx = event.clientX - activeLocation.clientX;
+        let dy = event.clientY - activeLocation.clientY;
+        const parentOffsetX = active.parentElement!.offsetLeft - activeLocation.parentX;
+        const parentOffsetY = active.parentElement!.offsetTop - activeLocation.parentY;
         dx -= parentOffsetX;
         dy -= parentOffsetY;
-        console.log(activeLocation);
+        //console.log({parentOffsetX, parentOffsetY});
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
             const bounds = active.parentElement!.getBoundingClientRect();
             const activeBounds = active.getBoundingClientRect();
@@ -592,6 +601,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         });
     }
 
+    
     private onTouchStart = (event: TouchEvent) => {
         this.onMouseOrTouchDown(this.recordTouch("down", event))
     }
@@ -615,7 +625,30 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         clientX /= touchCount;
         clientY /= touchCount;
-        this.lastInputEvent = { kind, target: event.target, clientX, clientY, touchCount }
+        var target = event.target as HTMLElement;
+        if (this.lastInputEvent) {
+            if (this.lastInputEvent.kind !== "up") {
+                target = this.lastInputEvent.target;
+            }
+        }
+        if (kind === "down" && target === this.myDomElement) {
+            target = this.childElements.find((e) => {
+                if (!e.parentElement) {
+                    return false;
+                }
+                const rect = e.getBoundingClientRect();
+                if (rect.left < clientX &&
+                    rect.top < clientY &&
+                    rect.right > clientX &&
+                    rect.bottom > clientY) {
+                    return true;
+                }
+                return false;
+            }) ?? target;
+            console.log(`recordTouch: found actual target to cache: ${target.id}`);
+        }
+        console.log(`recordTouch: ${kind} on ${(event.target as HTMLElement).id} ==> ${target.id}`);
+        this.lastInputEvent = { kind, target, clientX, clientY, touchCount }
         return this.lastInputEvent;
     }
 }

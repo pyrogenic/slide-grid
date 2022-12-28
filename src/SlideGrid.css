@@ -7,6 +7,10 @@
     position: relative;
 }
 
+.slide-grid > * {
+    pointer-events: none; 
+}
+
 .slide-grid .dragging {
     transform-origin: 50% 50%;
     z-index: 1;
