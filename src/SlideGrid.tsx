@@ -259,19 +259,10 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const x = event.clientX;
         const y = event.clientY;
-        if (target && this.active === target) {
+        if (target && (this.active === target || !elementContainsPoint(target, x, y))) {
             var insideActive = false;
             const otherTarget = this.childElements.find((element) => {
-                const rect = element.getBoundingClientRect();
-                const elementLeft = rect.left;
-                const elementTop = rect.top;
-                const elementRight = rect.right;
-                const elementBottom = rect.bottom;
-                const inside = (
-                    x > elementLeft &&
-                    x < elementRight &&
-                    y > elementTop &&
-                    y < elementBottom);
+                const inside = elementContainsPoint(element, x, y);
                 if (element === target) {
                     insideActive = true;
                     return false;
@@ -379,10 +370,14 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         const target = this.getTarget(event);
         if (target) {
             const rect = target.getBoundingClientRect();
-            const emptyLocation = {
+            const parentX = target.parentElement!.offsetLeft;
+            const parentY = target.parentElement!.offsetTop;
+            const emptyLocation: any = {
                 left: rect.left,
                 top: rect.top,
-            }
+                // parentX,
+                // parentY,
+            };
             const downEventX = event.clientX;
             const downEventY = event.clientY;
             const touching = event.touchCount !== undefined;
@@ -397,8 +392,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                     clientY: downEventY,
                     offsetX: downEventX - rect.left,
                     offsetY: downEventY - rect.top,
-                    parentX: target.parentElement!.offsetLeft,
-                    parentY: target.parentElement!.offsetTop,
+                    parentX: parentX,
+                    parentY: parentY,
                 },
             });
             setTimeout(() => {
@@ -434,14 +429,16 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const activeIsDragging = active.classList.contains(DRAGGING);
         let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
-        //console.log({ onlyUpdateActive, target: target && target.id, active: active.id, activeIsDragging, canDrag });
+        console.log({ onlyUpdateActive, target: target && target.id, active: active.id,
+            // activeIsDragging, canDrag,
+            x: event.clientX, y: event.clientY,
+             });
         let dx = event.clientX - activeLocation.clientX;// - activeLocation.parentX + ;
         let dy = event.clientY - activeLocation.clientY;// - activeLocation.parentY + active.parentElement!.offsetTop;
         let parentOffsetX = active.parentElement!.offsetLeft - activeLocation.parentX;
         let parentOffsetY = active.parentElement!.offsetTop - activeLocation.parentY;
         dx -= parentOffsetX;
         dy -= parentOffsetY;
-        console.log(activeLocation);
         if (canDrag && this.tuning.ignoreDragOutOfBounds) {
             const bounds = active.parentElement!.getBoundingClientRect();
             const activeBounds = active.getBoundingClientRect();
@@ -606,18 +603,38 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 
     private recordTouch = (kind: InputEventType, event: TouchEvent) => {
         event.preventDefault(); // prevents generation of mouse events 
-        const touchCount = event.touches.length;
         let clientX = 0;
         let clientY = 0;
-        for (let i = 0; i < touchCount; ++i) {
-            clientX += event.touches[i].clientX;
-            clientY += event.touches[i].clientY;
+        const touchCount = event.touches.length;
+        if (touchCount) {
+
+            for (let i = 0; i < touchCount; ++i) {
+                clientX += event.touches[i].clientX;
+                clientY += event.touches[i].clientY;
+            }
+            clientX /= touchCount;
+            clientY /= touchCount;
+        } else if (this.lastInputEvent) {
+            clientX = this.lastInputEvent.clientX;
+            clientY = this.lastInputEvent.clientY;
         }
-        clientX /= touchCount;
-        clientY /= touchCount;
-        this.lastInputEvent = { kind, target: event.target, clientX, clientY, touchCount }
+        this.lastInputEvent = {kind, target: event.target, clientX, clientY, touchCount};
         return this.lastInputEvent;
     }
 }
 
 export default SlideGrid;
+function elementContainsPoint(element: HTMLElement, x: number, y: number) {
+    const rect = element.getBoundingClientRect();
+    const elementLeft = rect.left;
+    const elementTop = rect.top;
+    const elementRight = rect.right;
+    const elementBottom = rect.bottom;
+    const inside = (
+        x > elementLeft &&
+        x < elementRight &&
+        y > elementTop &&
+        y < elementBottom);
+    return inside;
+}
+
