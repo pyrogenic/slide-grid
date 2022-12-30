@@ -259,7 +259,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const x = event.clientX;
         const y = event.clientY;
-        if (target && (this.active === target || !elementContainsPoint(target, x, y))) {
+        if (target && (sameElement(this.active, target) || !elementContainsPoint(target, x, y))) {
             var insideActive = false;
             const otherTarget = this.childElements.find((element) => {
                 const inside = elementContainsPoint(element, x, y);
@@ -321,8 +321,8 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         parentY: newEmptyLocation.parentY,
                     },
                 };
-                console.log("newEmptyLocation");
-                console.log(newEmptyLocation);
+                // console.log("newEmptyLocation");
+                // console.log(newEmptyLocation);
                 this.setState(newState);
                 return;
             }
@@ -398,7 +398,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             });
             setTimeout(() => {
                 const active = this.active;
-                if (active !== target) {
+                if (!sameElement(active, target)) {
                     return;
                 }
                 if (touching && this.props.smear && this.lastInputEvent) {
@@ -412,7 +412,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                         return;
                     }
                 }
-                if (active === target && !target.classList.contains(DRAGGING) && this.canExchange(target.id) !== false) {
+                if (sameElement(active, target) && !target.classList.contains(DRAGGING) && this.canExchange(target.id) !== false) {
                     target.classList.add(DRAGGING);
                     target.style.transform = DRAGGING_STYLE_TRANSFORM;
                 }
@@ -429,10 +429,10 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         }
         const activeIsDragging = active.classList.contains(DRAGGING);
         let canDrag = event.touchCount === undefined || event.touchCount > 1 || activeIsDragging;
-        console.log({ onlyUpdateActive, target: target && target.id, active: active.id,
-            // activeIsDragging, canDrag,
-            x: event.clientX, y: event.clientY,
-             });
+        // console.log({ onlyUpdateActive, target: target && target.id, active: active.id,
+        //     // activeIsDragging, canDrag,
+        //     x: event.clientX, y: event.clientY,
+        //      });
         let dx = event.clientX - activeLocation.clientX;// - activeLocation.parentX + ;
         let dy = event.clientY - activeLocation.clientY;// - activeLocation.parentY + active.parentElement!.offsetTop;
         let parentOffsetX = active.parentElement!.offsetLeft - activeLocation.parentX;
@@ -550,7 +550,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
             let dy = Math.abs(event.clientY - targetY);
             const d2 = dx * dx + dy * dy;
             if (target === active ? d2 > this.tuning.smearDistanceSquaredMin : d2 < this.tuning.smearDistanceSquaredMax) {
-                console.log(`smear from ${this.lastSmear} --> ${target.id} (d2: ${d2}, active: ${active?.id ?? undefined})`);
+                // console.log(`smear from ${this.lastSmear} --> ${target.id} (d2: ${d2}, active: ${active?.id ?? undefined})`);
                 this.lastSmear = target.id;
                 this.smear(target.id);
             }
@@ -568,7 +568,7 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
                 active.classList.remove(DRAGGING);
             } else if (event.touchCount === undefined) {
                 click = active.id;
-            } else if (target === active && state.location) {
+            } else if (target?.id === active.id && state.location) {
                 const dt = Date.now() - state.location.timestamp;
                 if (dt < this.tuning.longPressDurationMS) {
                     click = active.id;
@@ -624,6 +624,11 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
 }
 
 export default SlideGrid;
+
+function sameElement(a: HTMLElement | null | undefined, b: HTMLElement | null | undefined) {
+    return a?.id === b?.id;
+}
+
 function elementContainsPoint(element: HTMLElement, x: number, y: number) {
     const rect = element.getBoundingClientRect();
     const elementLeft = rect.left;
