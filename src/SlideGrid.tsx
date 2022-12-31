@@ -47,6 +47,11 @@ interface ISlideGridProps {
      * CSS class name for the main element.
      */
     className?: string;
+    
+    /**
+     * CSS styles for the main element.
+     */
+    style?: Partial<CSSStyleDeclaration>;
 
     tuning?: Partial<ISlideGridTuning>;
 
@@ -156,7 +161,10 @@ class SlideGrid extends React.Component<ISlideGridProps, ISlideGridState> {
         //         console.log({activePost: this.active});
         //     }, 1);
         // }
-        return <div id={this.uniqueId} className={compact([SLIDE_GRID, this.props.className, this.state.wiggle && WIGGLE]).join(" ")}
+        return <div 
+            id={this.uniqueId}
+             className={compact([SLIDE_GRID, this.props.className, this.state.wiggle && WIGGLE]).join(" ")}
+             style={this.props.style}
             onMouseDown={this.onMouseDown}
             onMouseMove={this.onMouseMove}
             onMouseUp={this.onMouseUp}>

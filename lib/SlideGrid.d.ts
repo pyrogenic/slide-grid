@@ -16,6 +16,10 @@ interface ISlideGridProps {
      * CSS class name for the main element.
      */
     className?: string;
+    /**
+     * CSS styles for the main element.
+     */
+    style?: Partial<CSSStyleDeclaration>;
     tuning?: Partial<ISlideGridTuning>;
     /**
      * An optional list of keys to use instead of the keys of our immediate children.
