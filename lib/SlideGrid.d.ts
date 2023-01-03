@@ -19,7 +19,7 @@ interface ISlideGridProps {
     /**
      * CSS styles for the main element.
      */
-    style?: Partial<CSSStyleDeclaration>;
+    style?: Partial<React.CSSProperties>;
     tuning?: Partial<ISlideGridTuning>;
     /**
      * An optional list of keys to use instead of the keys of our immediate children.
